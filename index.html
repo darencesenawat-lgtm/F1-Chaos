@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PWA ChatGPT</title>
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="#0a0a0a" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png">
+    <link rel="stylesheet" href="/styles.css" />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+      }
+    </script>
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="logo">DS<span>AI</span></div>
+      <button id="clear" title="Clear chat">Clear</button>
+    </header>
+    <main id="chat"></main>
+    <footer class="composer">
+      <textarea id="input" rows="1" placeholder="Message ChatGPT..."></textarea>
+      <button id="send" aria-label="Send">Send</button>
+    </footer>
+    <template id="bubble">
+      <div class="msg">
+        <div class="avatar"></div>
+        <div class="balloon"><div class="content"></div></div>
+      </div>
+    </template>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
