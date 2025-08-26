@@ -1,0 +1,3992 @@
+{
+  "meta": {
+    "title": "CCSF Master Simstate",
+    "version": "2029-preseason-to-R12-PATCHED-ALL+PATCH_EVERYTHING+MASTER+ENGINEER_AUTO_V1",
+    "generated_at": "2025-08-24 15:36:36",
+    "notes": "Regenerated from chat progress; includes engineers, TPs/CEOs, rules, boardroom flags, R1-R5 race results, and strategy logs. | Consolidated engine v2: budget+track+driver+TP+health+RE effects. | Hall_of_Fame added. | Hall_of_Fame extended to top 10. | Hall_of_Fame Race_Winners added. | Deployed: Weather, SC/VSC 2.0, Fuel&ERS, ParcFerme, MUST allocate enforced | TD-029 applied; Hard-coded weekend mode; Tyre Patch v1.0; R9-R11 patched. | R12 weekend added; CTR fix applied; FIA enforcement hardened; Williams penalised; engineers cleaned; constructors recalculated; rumours capped. | Preseason dev applied: attribute buffs mapped from allocation points (1 per 5, cap +2 per attribute). | Rumour_Mill injected & Rumors synced (cap 20). Transfer deadline policy added (R15). Williams second seat filled (Franco Colapinto). | Promoted to MASTER save. | Added Engineer_Transfer_Engine (auto mobility) and assigned Verstappen a new engineer."
+  },
+  "Governance": {
+    "FIA_Committee_Rule": true
+  },
+  "Boardroom_Flags": {
+    "Ferrari": {
+      "team_principal": "Marc Gene",
+      "sainz_status": "board_pressure_high",
+      "gasly_role": "No.1 driver"
+    },
+    "ExxonMobil": {
+      "horner_probation_races": 6,
+      "sponsor_crisis": [
+        "Oracle_exit",
+        "TikTok_exit"
+      ],
+      "technical_directive": {
+        "ERS_recovery_nerf": -1,
+        "appeal_status": "denied_by_committee"
+      }
+    },
+    "Shell Future GP": {
+      "rebrand": "Shell Future GP",
+      "team_principal": "Andrea Stella",
+      "albon_status": "under_review",
+      "fia_watchlist_removed": true
+    },
+    "PETRONAS": {
+      "hazik_status": "FIA_protected",
+      "second_seat": {
+        "target": "George Russell",
+        "status": "announcement_imminent",
+        "fallbacks": [
+          "Alex Albon",
+          "Frederik Vesti"
+        ],
+        "deadline_round": 7
+      },
+      "fia_watchlist_active": true
+    }
+  },
+  "Rumors": [
+    "Russell to PETRONAS before summer break",
+    "Sainz swap with Tsunoda at Toyota",
+    "Albon replacement at Shell Future GP (Lawson/Vesti/Schumacher)",
+    "Max Verstappen Alpine talks (Oracle leverage)",
+    "Russell PETRONAS deal announcement imminent (post-Suzuka)",
+    "Ferrari board close to forcing Sainz/Tsunoda swap",
+    "ExxonMobil sponsor panic deepening (Oracle/TikTok gone)",
+    "Albon replacement shortlist (Lawson/Vesti/Schumacher) still alive",
+    "Jos Verstappen seen in Alpine garage \u2014 leverage or real talks?",
+    "Lando Norris linked to ExxonMobil (20%)",
+    "Charles Leclerc linked to ExxonMobil (15%)",
+    "Kimi Antonelli linked to ExxonMobil (10%)",
+    "Oscar Piastri linked to ExxonMobil (15%)",
+    "George Russell linked to ExxonMobil (10%)",
+    "Carlos Sainz linked to ExxonMobil (30%)",
+    "Pierre Gasly linked to ExxonMobil (25%)",
+    "ExxonMobil hires Matteo Bianchi as Verstappen's new race engineer (temp synergy 7)."
+  ],
+  "Teams": [
+    {
+      "name": "ExxonMobil",
+      "tp": "Christian Horner",
+      "ceo": "ExxonMobil Board",
+      "drivers": [
+        "Max Verstappen",
+        "Lewis Hamilton"
+      ],
+      "value_billion": 7.3,
+      "sponsors_lost": [
+        "Oracle",
+        "TikTok"
+      ]
+    },
+    {
+      "name": "McLaren",
+      "tp": "Zak Brown",
+      "ceo": "Zak Brown",
+      "drivers": [
+        "Kimi Antonelli",
+        "Oscar Piastri"
+      ],
+      "value_billion": 8.46
+    },
+    {
+      "name": "Ferrari",
+      "tp": "Marc Gene",
+      "ceo": "John Elkann",
+      "drivers": [
+        "Pierre Gasly",
+        "Yuki Tsunoda"
+      ],
+      "value_billion": 8.07
+    },
+    {
+      "name": "Alpine",
+      "tp": "Bruno Famin",
+      "ceo": "Jos Verstappen",
+      "drivers": [
+        "Daniel Ricciardo",
+        "Esteban Ocon"
+      ],
+      "value_billion": 3.45,
+      "new_sponsor": "Oracle"
+    },
+    {
+      "name": "PETRONAS",
+      "tp": "Toto Wolff",
+      "ceo": "Ola K\u00e4llenius",
+      "drivers": [
+        "Hazik",
+        "George Russell"
+      ],
+      "value_billion": 7.24
+    },
+    {
+      "name": "Williams",
+      "tp": "James Vowles",
+      "ceo": "Dorilton Capital",
+      "drivers": [
+        "Logan Sargeant",
+        "Franco Colapinto"
+      ],
+      "value_billion": 5.73
+    },
+    {
+      "name": "Shell Future GP",
+      "tp": "Andrea Stella",
+      "ceo": "Shell Board",
+      "drivers": [
+        "Valtteri Bottas",
+        "Alex Albon"
+      ],
+      "value_billion": 5.1
+    },
+    {
+      "name": "Mazda",
+      "tp": "Franz Tost",
+      "ceo": "Mazda Motor Corp",
+      "drivers": [
+        "Lando Norris",
+        "Charles Leclerc"
+      ],
+      "value_billion": 2.94
+    },
+    {
+      "name": "Toyota",
+      "tp": "Koji Sato",
+      "ceo": "Koji Sato",
+      "drivers": [
+        "Nico Hulkenberg",
+        "Carlos Sainz"
+      ],
+      "value_billion": 5.03
+    },
+    {
+      "name": "Aramco",
+      "tp": "Team Directorate",
+      "ceo": "Amin Nasser",
+      "drivers": [
+        "Fernando Alonso",
+        "Al-Qahtani"
+      ],
+      "value_billion": 4.8
+    }
+  ],
+  "Car_Attributes_20": {
+    "schema": [
+      "Aero_Downforce",
+      "Drag_Efficiency",
+      "Top_Speed",
+      "Cornering_Grip",
+      "High_Speed_Stability",
+      "Low_Speed_Traction",
+      "Braking_Performance",
+      "Acceleration",
+      "ERS_Recovery",
+      "Engine_Power",
+      "Cooling_Systems",
+      "Fuel_Efficiency",
+      "Reliability_General",
+      "Tire_Warmup",
+      "Tire_Wear",
+      "Upgrade_Efficiency",
+      "Development_Potential",
+      "Pit_Stop_Efficiency",
+      "Hybrid_Integration",
+      "Chassis_Balance"
+    ],
+    "teams": {
+      "ExxonMobil": {
+        "Aero_Downforce": 15,
+        "Drag_Efficiency": 14,
+        "Top_Speed": 16,
+        "Cornering_Grip": 14,
+        "High_Speed_Stability": 14,
+        "Low_Speed_Traction": 13,
+        "Braking_Performance": 14,
+        "Acceleration": 15,
+        "ERS_Recovery": 14,
+        "Engine_Power": 18,
+        "Cooling_Systems": 13,
+        "Fuel_Efficiency": 13,
+        "Reliability_General": 13,
+        "Tire_Warmup": 13,
+        "Tire_Wear": 12,
+        "Upgrade_Efficiency": 12,
+        "Development_Potential": 12,
+        "Pit_Stop_Efficiency": 13,
+        "Hybrid_Integration": 13,
+        "Chassis_Balance": 13
+      },
+      "McLaren": {
+        "Aero_Downforce": 17,
+        "Drag_Efficiency": 14,
+        "Top_Speed": 15,
+        "Cornering_Grip": 18,
+        "High_Speed_Stability": 16,
+        "Low_Speed_Traction": 14,
+        "Braking_Performance": 14,
+        "Acceleration": 14,
+        "ERS_Recovery": 14,
+        "Engine_Power": 15,
+        "Cooling_Systems": 14,
+        "Fuel_Efficiency": 14,
+        "Reliability_General": 14,
+        "Tire_Warmup": 14,
+        "Tire_Wear": 15,
+        "Upgrade_Efficiency": 15,
+        "Development_Potential": 15,
+        "Pit_Stop_Efficiency": 14,
+        "Hybrid_Integration": 15,
+        "Chassis_Balance": 15
+      },
+      "Alpine": {
+        "Aero_Downforce": 15,
+        "Drag_Efficiency": 15,
+        "Top_Speed": 15,
+        "Cornering_Grip": 15,
+        "High_Speed_Stability": 15,
+        "Low_Speed_Traction": 14,
+        "Braking_Performance": 15,
+        "Acceleration": 14,
+        "ERS_Recovery": 14,
+        "Engine_Power": 15,
+        "Cooling_Systems": 14,
+        "Fuel_Efficiency": 14,
+        "Reliability_General": 14,
+        "Tire_Warmup": 14,
+        "Tire_Wear": 15,
+        "Upgrade_Efficiency": 17,
+        "Development_Potential": 17,
+        "Pit_Stop_Efficiency": 14,
+        "Hybrid_Integration": 15,
+        "Chassis_Balance": 15
+      },
+      "Ferrari": {
+        "Aero_Downforce": 14,
+        "Drag_Efficiency": 13,
+        "Top_Speed": 14,
+        "Cornering_Grip": 15,
+        "High_Speed_Stability": 14,
+        "Low_Speed_Traction": 13,
+        "Braking_Performance": 13,
+        "Acceleration": 13,
+        "ERS_Recovery": 14,
+        "Engine_Power": 14,
+        "Cooling_Systems": 13,
+        "Fuel_Efficiency": 14,
+        "Reliability_General": 13,
+        "Tire_Warmup": 13,
+        "Tire_Wear": 13,
+        "Upgrade_Efficiency": 13,
+        "Development_Potential": 13,
+        "Pit_Stop_Efficiency": 13,
+        "Hybrid_Integration": 14,
+        "Chassis_Balance": 14
+      },
+      "PETRONAS": {
+        "Aero_Downforce": 14,
+        "Drag_Efficiency": 13,
+        "Top_Speed": 16,
+        "Cornering_Grip": 14,
+        "High_Speed_Stability": 14,
+        "Low_Speed_Traction": 13,
+        "Braking_Performance": 13,
+        "Acceleration": 13,
+        "ERS_Recovery": 14,
+        "Engine_Power": 18,
+        "Cooling_Systems": 19,
+        "Fuel_Efficiency": 14,
+        "Reliability_General": 14,
+        "Tire_Warmup": 15,
+        "Tire_Wear": 14,
+        "Upgrade_Efficiency": 14,
+        "Development_Potential": 15,
+        "Pit_Stop_Efficiency": 13,
+        "Hybrid_Integration": 14,
+        "Chassis_Balance": 13
+      },
+      "Williams": {
+        "Aero_Downforce": 13,
+        "Drag_Efficiency": 13,
+        "Top_Speed": 13,
+        "Cornering_Grip": 13,
+        "High_Speed_Stability": 13,
+        "Low_Speed_Traction": 13,
+        "Braking_Performance": 13,
+        "Acceleration": 13,
+        "ERS_Recovery": 13,
+        "Engine_Power": 13,
+        "Cooling_Systems": 13,
+        "Fuel_Efficiency": 13,
+        "Reliability_General": 16,
+        "Tire_Warmup": 13,
+        "Tire_Wear": 14,
+        "Upgrade_Efficiency": 14,
+        "Development_Potential": 16,
+        "Pit_Stop_Efficiency": 13,
+        "Hybrid_Integration": 13,
+        "Chassis_Balance": 13
+      },
+      "Shell Future GP": {
+        "Aero_Downforce": 13,
+        "Drag_Efficiency": 14,
+        "Top_Speed": 13,
+        "Cornering_Grip": 12,
+        "High_Speed_Stability": 12,
+        "Low_Speed_Traction": 12,
+        "Braking_Performance": 12,
+        "Acceleration": 12,
+        "ERS_Recovery": 12,
+        "Engine_Power": 12,
+        "Cooling_Systems": 13,
+        "Fuel_Efficiency": 13,
+        "Reliability_General": 13,
+        "Tire_Warmup": 13,
+        "Tire_Wear": 13,
+        "Upgrade_Efficiency": 13,
+        "Development_Potential": 13,
+        "Pit_Stop_Efficiency": 15,
+        "Hybrid_Integration": 12,
+        "Chassis_Balance": 13
+      },
+      "Mazda": {
+        "Aero_Downforce": 13,
+        "Drag_Efficiency": 13,
+        "Top_Speed": 13,
+        "Cornering_Grip": 13,
+        "High_Speed_Stability": 13,
+        "Low_Speed_Traction": 13,
+        "Braking_Performance": 13,
+        "Acceleration": 13,
+        "ERS_Recovery": 13,
+        "Engine_Power": 13,
+        "Cooling_Systems": 13,
+        "Fuel_Efficiency": 13,
+        "Reliability_General": 13,
+        "Tire_Warmup": 13,
+        "Tire_Wear": 13,
+        "Upgrade_Efficiency": 13,
+        "Development_Potential": 13,
+        "Pit_Stop_Efficiency": 13,
+        "Hybrid_Integration": 13,
+        "Chassis_Balance": 13
+      },
+      "Toyota": {
+        "Aero_Downforce": 13,
+        "Drag_Efficiency": 13,
+        "Top_Speed": 13,
+        "Cornering_Grip": 13,
+        "High_Speed_Stability": 13,
+        "Low_Speed_Traction": 13,
+        "Braking_Performance": 14,
+        "Acceleration": 13,
+        "ERS_Recovery": 13,
+        "Engine_Power": 13,
+        "Cooling_Systems": 14,
+        "Fuel_Efficiency": 13,
+        "Reliability_General": 13,
+        "Tire_Warmup": 14,
+        "Tire_Wear": 13,
+        "Upgrade_Efficiency": 12,
+        "Development_Potential": 12,
+        "Pit_Stop_Efficiency": 13,
+        "Hybrid_Integration": 13,
+        "Chassis_Balance": 13
+      },
+      "Aramco": {
+        "Aero_Downforce": 12,
+        "Drag_Efficiency": 12,
+        "Top_Speed": 12,
+        "Cornering_Grip": 12,
+        "High_Speed_Stability": 12,
+        "Low_Speed_Traction": 12,
+        "Braking_Performance": 12,
+        "Acceleration": 12,
+        "ERS_Recovery": 12,
+        "Engine_Power": 12,
+        "Cooling_Systems": 12,
+        "Fuel_Efficiency": 12,
+        "Reliability_General": 13,
+        "Tire_Warmup": 12,
+        "Tire_Wear": 12,
+        "Upgrade_Efficiency": 12,
+        "Development_Potential": 12,
+        "Pit_Stop_Efficiency": 12,
+        "Hybrid_Integration": 13,
+        "Chassis_Balance": 12
+      }
+    }
+  },
+  "Race_Engineers_By_Team": {
+    "ExxonMobil": [
+      {
+        "driver": "Max Verstappen",
+        "engineer": {
+          "name": "Matteo Bianchi",
+          "Strategy_IQ": 8,
+          "Tyre_Management": 8,
+          "Pressure": 8,
+          "Synergy": 7,
+          "Innovation": 8
+        }
+      },
+      {
+        "driver": "Lewis Hamilton",
+        "engineer": {
+          "name": "Peter Bonnington",
+          "Strategy_IQ": 8,
+          "Tyre_Management": 8,
+          "Pressure": 9,
+          "Synergy": 9,
+          "Innovation": 7
+        }
+      }
+    ],
+    "McLaren": [
+      {
+        "driver": "Kimi Antonelli",
+        "engineer": {
+          "name": "Tom Stallard",
+          "Strategy_IQ": 8,
+          "Tyre_Management": 8,
+          "Pressure": 7,
+          "Synergy": 9,
+          "Innovation": 8
+        }
+      },
+      {
+        "driver": "Oscar Piastri",
+        "engineer": {
+          "name": "Will Joseph",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 7,
+          "Pressure": 6,
+          "Synergy": 8,
+          "Innovation": 7
+        }
+      }
+    ],
+    "Ferrari": [
+      {
+        "driver": "Pierre Gasly",
+        "engineer": {
+          "name": "Riccardo Adami",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 7,
+          "Pressure": 8,
+          "Synergy": 7,
+          "Innovation": 6
+        }
+      },
+      {
+        "driver": "Yuki Tsunoda",
+        "engineer": {
+          "name": "Hiro Tanaka",
+          "Strategy_IQ": 6,
+          "Tyre_Management": 6,
+          "Pressure": 6,
+          "Synergy": 6,
+          "Innovation": 6
+        }
+      }
+    ],
+    "Alpine": [
+      {
+        "driver": "Daniel Ricciardo",
+        "engineer": {
+          "name": "Simon Rennie",
+          "Strategy_IQ": 8,
+          "Tyre_Management": 7,
+          "Pressure": 8,
+          "Synergy": 9,
+          "Innovation": 8
+        }
+      },
+      {
+        "driver": "Esteban Ocon",
+        "engineer": {
+          "name": "Mark Slade",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 6,
+          "Pressure": 7,
+          "Synergy": 7,
+          "Innovation": 6
+        }
+      }
+    ],
+    "PETRONAS": [
+      {
+        "driver": "Hazik",
+        "engineer": {
+          "name": "Marcus Dudley",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 8,
+          "Pressure": 7,
+          "Synergy": 9,
+          "Innovation": 7
+        }
+      },
+      {
+        "driver": "George Russell",
+        "engineer": {
+          "name": "James Urwin",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 7,
+          "Pressure": 7,
+          "Synergy": 8,
+          "Innovation": 7
+        }
+      }
+    ],
+    "Williams": [
+      {
+        "driver": "Logan Sargeant",
+        "engineer": {
+          "name": "Gaetan Jego",
+          "Strategy_IQ": 6,
+          "Tyre_Management": 6,
+          "Pressure": 5,
+          "Synergy": 6,
+          "Innovation": 6
+        }
+      },
+      {
+        "driver": "Franco Colapinto",
+        "engineer": {
+          "name": "Sophie Lee",
+          "Strategy_IQ": 6,
+          "Tyre_Management": 6,
+          "Pressure": 6,
+          "Synergy": 6,
+          "Innovation": 6
+        }
+      }
+    ],
+    "Shell Future GP": [
+      {
+        "driver": "Valtteri Bottas",
+        "engineer": {
+          "name": "Alex Chan",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 8,
+          "Pressure": 8,
+          "Synergy": 8,
+          "Innovation": 6
+        }
+      },
+      {
+        "driver": "Alex Albon",
+        "engineer": {
+          "name": "Marco Rossi",
+          "Strategy_IQ": 6,
+          "Tyre_Management": 6,
+          "Pressure": 5,
+          "Synergy": 6,
+          "Innovation": 5
+        }
+      }
+    ],
+    "Mazda": [
+      {
+        "driver": "Lando Norris",
+        "engineer": {
+          "name": "Andrew Jarvis",
+          "Strategy_IQ": 8,
+          "Tyre_Management": 7,
+          "Pressure": 8,
+          "Synergy": 9,
+          "Innovation": 7
+        }
+      },
+      {
+        "driver": "Charles Leclerc",
+        "engineer": {
+          "name": "Davide Marino",
+          "Strategy_IQ": 6,
+          "Tyre_Management": 5,
+          "Pressure": 5,
+          "Synergy": 5,
+          "Innovation": 6
+        }
+      }
+    ],
+    "Toyota": [
+      {
+        "driver": "Nico Hulkenberg",
+        "engineer": {
+          "name": "Mike Krack",
+          "Strategy_IQ": 7,
+          "Tyre_Management": 7,
+          "Pressure": 7,
+          "Synergy": 8,
+          "Innovation": 6
+        }
+      },
+      {
+        "driver": "Carlos Sainz",
+        "engineer": {
+          "name": "Xavi Marcos",
+          "Strategy_IQ": 5,
+          "Tyre_Management": 6,
+          "Pressure": 5,
+          "Synergy": 5,
+          "Innovation": 5
+        }
+      }
+    ],
+    "Aramco": [
+      {
+        "driver": "Fernando Alonso",
+        "engineer": {
+          "name": "Andrea Stella (advisor)",
+          "Strategy_IQ": 9,
+          "Tyre_Management": 8,
+          "Pressure": 9,
+          "Synergy": 9,
+          "Innovation": 8
+        }
+      },
+      {
+        "driver": "Al-Qahtani",
+        "engineer": {
+          "name": "Karim Al-Sabah",
+          "Strategy_IQ": 4,
+          "Tyre_Management": 5,
+          "Pressure": 3,
+          "Synergy": 4,
+          "Innovation": 4
+        }
+      }
+    ]
+  },
+  "Race_Strategy": [
+    {
+      "round": 4,
+      "gp": "Bahrain GP",
+      "location": "Sakhir",
+      "conditions": {
+        "track_temp_c": 34,
+        "tyres": {
+          "Hard": "C1",
+          "Medium": "C2",
+          "Soft": "C3"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 2,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 3,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 4,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 5,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 6,
+          "driver": "George Russell",
+          "team": "Williams",
+          "tyre": "Hard"
+        },
+        {
+          "pos": 7,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 8,
+          "driver": "Oscar Piastri",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 9,
+          "driver": "Lando Norris",
+          "team": "Mazda",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 10,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Medium"
+        }
+      ],
+      "lap_narration": [
+        "L1 Antonelli covers Verstappen; Ricciardo grabs P3 from Hamilton.",
+        "L12 Verstappen softs fade; undercut threat forms.",
+        "L16 Antonelli pits (M->H) 2.4s; rejoins ahead after undercut.",
+        "L17 Verstappen pits (S->H); angry radio about tyre deg.",
+        "L28 Sainz crashes T10; VSC deployed; Ferrari pit wall freezes, Gasly stranded.",
+        "L38 Ricciardo pits (H->M), undercuts Hamilton for P3.",
+        "L44 Russell pits (H->S), passes Hazik late with DRS.",
+        "Finish Antonelli wins by 2.1s over Verstappen."
+      ]
+    },
+    {
+      "round": 5,
+      "gp": "Chinese GP",
+      "location": "Shanghai",
+      "conditions": {
+        "track_temp_c": 29,
+        "tyres": {
+          "Hard": "C2",
+          "Medium": "C3",
+          "Soft": "C4"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 2,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 3,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 4,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 5,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 6,
+          "driver": "George Russell",
+          "team": "Williams",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 7,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 8,
+          "driver": "Oscar Piastri",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 9,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 10,
+          "driver": "Lando Norris",
+          "team": "Mazda",
+          "tyre": "Medium"
+        }
+      ],
+      "lap_narration": [
+        "L1 Verstappen launches; Hazik jumps Russell into T1.",
+        "L6 Russell repasses Hazik into hairpin.",
+        "L13 Verstappen pits (S->H) early; traffic risk.",
+        "L19 Antonelli pits (M->H) and rejoins ahead of Max.",
+        "L28 Safety Car: Tsunoda crash; leaders pit to (H->M).",
+        "L35 Green; Antonelli attacks Max; GP orders full deploy, Max defends.",
+        "L42 Russell passes Gasly for P5; Hazik P7 stuck behind Ferrari.",
+        "L51 Antonelli dive at hairpin, minor contact, both continue.",
+        "Finish Verstappen wins by 0.5s over Antonelli; Ricciardo P3."
+      ]
+    },
+    {
+      "round": 6,
+      "gp": "Monaco GP",
+      "location": "Monaco",
+      "conditions": {
+        "track_temp_c": 26,
+        "tyres": {
+          "Hard": "C3",
+          "Medium": "C4",
+          "Soft": "C5"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Charles Leclerc",
+          "team": "Mazda",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 2,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 3,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 4,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 5,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 6,
+          "driver": "George Russell",
+          "team": "Williams",
+          "tyre": "Hard"
+        },
+        {
+          "pos": 7,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 8,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 9,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 10,
+          "driver": "Lando Norris",
+          "team": "Mazda",
+          "tyre": "Medium"
+        }
+      ],
+      "lap_narration": [
+        "L1 Leclerc holds lead; Verstappen shadows; Ricciardo covers Hamilton.",
+        "L12 Bottas taps wall at Swimming Pool; VSC deployed; Ferrari hesitate on Gasly, loses track position.",
+        "L22 Safety Car: Hulkenberg parks at Mirabeau; leaders pit, shuffle ensues.",
+        "L34 Antonelli dives Verstappen at Rascasse; light contact, no damage.",
+        "L41 Leclerc pits late, rejoins P3 behind Antonelli & Verstappen.",
+        "L58 Hazik tries Russell at Loews hairpin; forced to cut; stewards 'racing incident'.",
+        "Finish Antonelli wins; Verstappen P2; Leclerc P3."
+      ],
+      "radio_comms": [
+        {
+          "lap": "L1",
+          "actor": "Antonelli",
+          "line": "He\u2019s on me, talk to me on gap."
+        },
+        {
+          "lap": "L12",
+          "actor": "Gasly",
+          "line": "Guys\u2026 why didn\u2019t we box under VSC?"
+        },
+        {
+          "lap": "L22",
+          "actor": "Ricciardo",
+          "line": "Box now? Copy, strap me mediums."
+        },
+        {
+          "lap": "L34",
+          "actor": "Verstappen",
+          "line": "He hit me! That\u2019s a joke."
+        },
+        {
+          "lap": "L41",
+          "actor": "Leclerc",
+          "line": "Tell me position\u2026 P3? Copy."
+        },
+        {
+          "lap": "L58",
+          "actor": "Hazik",
+          "line": "He left no room there."
+        }
+      ]
+    },
+    {
+      "round": 9,
+      "gp": "Italian GP",
+      "location": "Monza",
+      "conditions": {
+        "track_temp_c": 30,
+        "tyres": {
+          "Hard": "C2",
+          "Medium": "C3",
+          "Soft": "C4"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 2,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 3,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 4,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 5,
+          "driver": "George Russell",
+          "team": "Williams",
+          "tyre": "Hard"
+        },
+        {
+          "pos": 6,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 7,
+          "driver": "Charles Leclerc",
+          "team": "Mazda",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 8,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 9,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 10,
+          "driver": "Oscar Piastri",
+          "team": "McLaren",
+          "tyre": "Medium"
+        }
+      ],
+      "lap_narration": [
+        "L1 Verstappen rockets on softs; Antonelli covers P2; Hamilton locks P3.",
+        "L11 Leclerc softs cook; pits early (S->H).",
+        "L17 Verstappen pits (S->M), undercut threat on Antonelli.",
+        "L24 SC: Bottas engine failure; McLaren double-stack hurts Antonelli.",
+        "L32 Hamilton undercuts Ricciardo for P3.",
+        "L42 Hazik DRS pass on Leclerc for P6.",
+        "Finish Verstappen wins by 2.5s."
+      ],
+      "radio_comms": [
+        {
+          "lap": "L11",
+          "actor": "Leclerc",
+          "line": "Softs are finished, box box."
+        },
+        {
+          "lap": "L17",
+          "actor": "Verstappen",
+          "line": "Tyres feel better now, let\u2019s go."
+        },
+        {
+          "lap": "L24",
+          "actor": "Antonelli",
+          "line": "That timing killed us on the stack."
+        },
+        {
+          "lap": "L32",
+          "actor": "Hamilton",
+          "line": "Nice one boys, clear air now."
+        },
+        {
+          "lap": "L42",
+          "actor": "Hazik",
+          "line": "Easy DRS, grazie."
+        }
+      ]
+    },
+    {
+      "round": 10,
+      "gp": "Singapore GP (Night II)",
+      "location": "Singapore",
+      "conditions": {
+        "track_temp_c": 29,
+        "tyres": {
+          "Inter": "Green",
+          "Wet": "Blue",
+          "Soft": "C5",
+          "Medium": "C4",
+          "Hard": "C3"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 2,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 3,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 4,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 5,
+          "driver": "George Russell",
+          "team": "Williams",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 6,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 7,
+          "driver": "Charles Leclerc",
+          "team": "Mazda",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 8,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 9,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 10,
+          "driver": "Oscar Piastri",
+          "team": "McLaren",
+          "tyre": "Soft"
+        }
+      ],
+      "lap_narration": [
+        "L1 Verstappen leads; Antonelli P2; Ricciardo P3.",
+        "L8 Rain sprinkles; slicks survive.",
+        "L15 Ricciardo pits early (S->M), undercut threat on Antonelli.",
+        "L22 SC: Tsunoda crash; pit chaos. McLaren double-stack burns Piastri again.",
+        "L29 Restart: Hazik passes Russell for P5.",
+        "L38 Ricciardo dive Turn 7 on Antonelli sticks.",
+        "L50 Heavy rain: switch to Inters; Ferrari leave Gasly out one lap too long.",
+        "Finish Verstappen wins; Ricciardo P2; Antonelli P3."
+      ],
+      "radio_comms": [
+        {
+          "lap": "Q",
+          "actor": "Antonelli",
+          "line": "Finally, the car feels hooked up here."
+        },
+        {
+          "lap": "L29",
+          "actor": "Hazik",
+          "line": "That extension earlier paid off."
+        },
+        {
+          "lap": "L38",
+          "actor": "Ricciardo",
+          "line": "That\u2019s how we do it!"
+        }
+      ]
+    },
+    {
+      "round": 11,
+      "gp": "Brazilian GP",
+      "location": "Interlagos",
+      "conditions": {
+        "track_temp_c": 31,
+        "tyres": {
+          "Hard": "C2",
+          "Medium": "C3",
+          "Soft": "C4"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 2,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 3,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 4,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 5,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 6,
+          "driver": "George Russell",
+          "team": "Williams",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 7,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 8,
+          "driver": "Yuki Tsunoda",
+          "team": "Ferrari",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 9,
+          "driver": "Charles Leclerc",
+          "team": "Mazda",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 10,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Soft"
+        }
+      ],
+      "lap_narration": [
+        "L1 Verstappen launches; Antonelli P2; Ricciardo P3.",
+        "L7 Hamilton undercuts Gasly into T1; Ferrari slow to react.",
+        "L16 Tsunoda overtakes Russell at Senna S on Ferrari debut.",
+        "L24 SC: Sainz spins into gravel; Toyota deflated.",
+        "L29 Restart: Ricciardo sends Antonelli at Descida do Lago.",
+        "L42 Hazik clears Leclerc for P7 leveraging fuel efficiency.",
+        "L53 Verstappen cruises home by 5s."
+      ],
+      "radio_comms": [
+        {
+          "lap": "L16",
+          "actor": "Tsunoda",
+          "line": "YES boys, Ferrari power!"
+        },
+        {
+          "lap": "L24",
+          "actor": "Sainz",
+          "line": "Lost the rear, sorry."
+        },
+        {
+          "lap": "L29",
+          "actor": "Ricciardo",
+          "line": "That one felt nice."
+        },
+        {
+          "lap": "L53",
+          "actor": "Verstappen",
+          "line": "Car\u2019s alive, bring it home."
+        }
+      ]
+    },
+    {
+      "round": 12,
+      "gp": "Belgian GP",
+      "location": "Spa-Francorchamps",
+      "conditions": {
+        "track_temp_c": 28,
+        "tyres": {
+          "Hard": "C2",
+          "Medium": "C3",
+          "Soft": "C4",
+          "Inter": "Green"
+        }
+      },
+      "starting_grid_tyres": [
+        {
+          "pos": 1,
+          "driver": "Max Verstappen",
+          "team": "ExxonMobil",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 2,
+          "driver": "Kimi Antonelli",
+          "team": "McLaren",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 3,
+          "driver": "Daniel Ricciardo",
+          "team": "Alpine",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 4,
+          "driver": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 5,
+          "driver": "George Russell",
+          "team": "PETRONAS",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 6,
+          "driver": "Hazik",
+          "team": "PETRONAS",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 7,
+          "driver": "Charles Leclerc",
+          "team": "Mazda",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 8,
+          "driver": "Pierre Gasly",
+          "team": "Ferrari",
+          "tyre": "Medium"
+        },
+        {
+          "pos": 9,
+          "driver": "Yuki Tsunoda",
+          "team": "Ferrari",
+          "tyre": "Soft"
+        },
+        {
+          "pos": 10,
+          "driver": "Fernando Alonso",
+          "team": "Aramco",
+          "tyre": "Medium"
+        }
+      ],
+      "lap_narration": [
+        "L1 Verstappen rockets; Russell jumps Ricciardo at Les Combes.",
+        "L9 Russell softs toast; early pit.",
+        "L15 SC: Hulkenberg spins at Pouhon; free stops.",
+        "L23 Ricciardo elbows Hamilton at Bus Stop; both continue.",
+        "L31 Rain sprinkles; inters gamble fizzles; Ferrari hesitates.",
+        "L39 Antonelli undercuts; side-by-side with Verstappen; Max holds.",
+        "L44 Hazik DRS pass on Gasly into Blanchimont.",
+        "Finish Verstappen by <1s over Antonelli; Ricciardo P3."
+      ],
+      "radio_comms": [
+        {
+          "lap": "L9",
+          "actor": "Russell",
+          "line": "Tyres are gone already!"
+        },
+        {
+          "lap": "L22",
+          "actor": "Verstappen",
+          "line": "Box, overcut chance?"
+        },
+        {
+          "lap": "L31",
+          "actor": "Ferrari Wall",
+          "line": "Hold one more lap... wait."
+        },
+        {
+          "lap": "L39",
+          "actor": "Antonelli",
+          "line": "He\u2019s weaving, report it!"
+        },
+        {
+          "lap": "L44",
+          "actor": "Hazik",
+          "line": "DRS baby, PETRONAS is alive!"
+        }
+      ]
+    }
+  ],
+  "Dev_Points_Base_2029": {
+    "ExxonMobil": 73,
+    "McLaren": 85,
+    "Ferrari": 81,
+    "Alpine": 34,
+    "PETRONAS": 41,
+    "Williams": 57,
+    "Shell Future GP": 51,
+    "Mazda": 29,
+    "Toyota": 50,
+    "Aramco": 48
+  },
+  "Development_Budget": {
+    "windows": [
+      {
+        "name": "Preseason",
+        "round": 0
+      },
+      {
+        "name": "R3_window",
+        "round": 3
+      },
+      {
+        "name": "R6_window",
+        "round": 6
+      },
+      {
+        "name": "R9_window",
+        "round": 9
+      },
+      {
+        "name": "R12_window",
+        "round": 12
+      },
+      {
+        "name": "R15_window",
+        "round": 15
+      },
+      {
+        "name": "R18_window",
+        "round": 18
+      },
+      {
+        "name": "R21_window",
+        "round": 21
+      }
+    ],
+    "allocations_points": {
+      "R6_window": "PENDING",
+      "Preseason": {
+        "McLaren": 20,
+        "ExxonMobil": 15,
+        "Ferrari": 12,
+        "Alpine": 5,
+        "PETRONAS": 10,
+        "Williams": 8,
+        "Shell Future GP": 7,
+        "Toyota": 9,
+        "Aramco": 6,
+        "Mazda": 4
+      }
+    },
+    "policy": "Parent companies assign allocation_points per team before each window opens. Points are added to base DPP for that window only.",
+    "notes": "Use integers. Overspend -> penalty next season. Lowest-ranked team gets chaos_boost_points.",
+    "tyre_test_tokens_per_window": 1,
+    "tyre_test_notes": "Use to unlock extra tyre data in FP2; boosts Tyre_Impact narrative depth."
+  },
+  "Parent_Companies": {
+    "ExxonMobil": "ExxonMobil Board",
+    "McLaren": "Zak Brown",
+    "Ferrari": "John Elkann",
+    "Alpine": "Jos Verstappen",
+    "PETRONAS": "Ola K\u00e4llenius",
+    "Williams": "Dorilton Capital",
+    "Shell Future GP": "Shell Board",
+    "Mazda": "Mazda Motor Corp",
+    "Toyota": "Koji Sato",
+    "Aramco": "Amin Nasser"
+  },
+  "Track_Engine": {
+    "types": {
+      "HighSpeedPower": [
+        "Top_Speed",
+        "Drag_Efficiency",
+        "Engine_Power",
+        "High_Speed_Stability"
+      ],
+      "TwistyStreet": [
+        "Cornering_Grip",
+        "Low_Speed_Traction",
+        "Braking_Performance",
+        "Chassis_Balance"
+      ],
+      "BalancedAllRounder": [
+        "Aero_Downforce",
+        "Chassis_Balance",
+        "Acceleration",
+        "Tire_Wear"
+      ],
+      "StopStartHairpins": [
+        "Braking_Performance",
+        "Low_Speed_Traction",
+        "Hybrid_Integration"
+      ],
+      "AltitudeSpecial": [
+        "Engine_Power",
+        "Cooling_Systems",
+        "Fuel_Efficiency"
+      ],
+      "ChaosWildcard": [
+        "Reliability_General",
+        "Pit_Stop_Efficiency"
+      ],
+      "HotWearHeavy": [
+        "Cooling_Systems",
+        "Tire_Wear",
+        "Fuel_Efficiency"
+      ]
+    },
+    "condition_modifiers": {
+      "hot_track_over_32C": {
+        "Cooling_Systems": 2,
+        "Tire_Wear": 1
+      },
+      "cold_track_below_25C": {
+        "Tire_Warmup": 2,
+        "Cornering_Grip": 1
+      }
+    },
+    "mapping_policy": "Known circuits are pre-tagged. New circuits default to BalancedAllRounder until mapped.",
+    "circuit_map": {
+      "Melbourne": "BalancedAllRounder",
+      "Sepang": "HotWearHeavy",
+      "Jeddah": "HighSpeedPower",
+      "Sakhir": "BalancedAllRounder",
+      "Shanghai": "BalancedAllRounder",
+      "Monaco": "TwistyStreet",
+      "Singapore": "TwistyStreet",
+      "Baku": "TwistyStreet",
+      "Monza": "HighSpeedPower",
+      "Spa-Francorchamps": "HighSpeedPower",
+      "Silverstone": "BalancedAllRounder",
+      "Suzuka": "BalancedAllRounder",
+      "Interlagos": "AltitudeSpecial",
+      "Mexico City": "AltitudeSpecial",
+      "Circuit of the Americas": "BalancedAllRounder",
+      "Montreal": "StopStartHairpins",
+      "Imola": "BalancedAllRounder",
+      "Zandvoort": "BalancedAllRounder",
+      "Barcelona-Catalunya": "BalancedAllRounder",
+      "Hungaroring": "StopStartHairpins",
+      "Red Bull Ring": "HighSpeedPower",
+      "Yas Marina": "StopStartHairpins",
+      "Losail": "HighSpeedPower",
+      "Miami": "StopStartHairpins",
+      "Las Vegas": "ChaosWildcard",
+      "Sochi": "StopStartHairpins",
+      "Paul Ricard": "HighSpeedPower",
+      "Portimao": "HighSpeedPower",
+      "Mugello": "BalancedAllRounder",
+      "Hockenheim": "BalancedAllRounder",
+      "Nurburgring": "BalancedAllRounder",
+      "Kyalami": "HighSpeedPower"
+    },
+    "notes": "Expanded circuit map seeded."
+  },
+  "Driver_Attributes": {
+    "Max Verstappen": {
+      "Pace": 10,
+      "Qualifying": 10,
+      "Racecraft": 9,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 9,
+      "Consistency": 10,
+      "Aggression": 8,
+      "Composure": 10,
+      "Mech_Sympathy": 8,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 9,
+      "Engineer_Synergy": 10
+    },
+    "Lewis Hamilton": {
+      "Pace": 9,
+      "Qualifying": 9,
+      "Racecraft": 9,
+      "Tyre_Mgmt": 9,
+      "Wet_Skill": 10,
+      "Consistency": 9,
+      "Aggression": 7,
+      "Composure": 10,
+      "Mech_Sympathy": 9,
+      "Feedback": 9,
+      "Starts": 8,
+      "ERS_Mgmt": 9,
+      "Engineer_Synergy": 9
+    },
+    "Kimi Antonelli": {
+      "Pace": 9,
+      "Qualifying": 8,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 8,
+      "Composure": 7,
+      "Mech_Sympathy": 7,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 8,
+      "Engineer_Synergy": 9
+    },
+    "Daniel Ricciardo": {
+      "Pace": 8,
+      "Qualifying": 7,
+      "Racecraft": 9,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 7,
+      "Composure": 9,
+      "Mech_Sympathy": 8,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 8,
+      "Engineer_Synergy": 9
+    },
+    "George Russell": {
+      "Pace": 8,
+      "Qualifying": 9,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 8,
+      "Aggression": 8,
+      "Composure": 8,
+      "Mech_Sympathy": 8,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 8,
+      "Consistency": 8,
+      "Engineer_Synergy": 8
+    },
+    "Hazik": {
+      "Pace": 7,
+      "Qualifying": 7,
+      "Racecraft": 7,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 6,
+      "Consistency": 7,
+      "Aggression": 7,
+      "Composure": 7,
+      "Mech_Sympathy": 8,
+      "Feedback": 7,
+      "Starts": 7,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 9
+    },
+    "Pierre Gasly": {
+      "Pace": 8,
+      "Qualifying": 8,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 7,
+      "Composure": 7,
+      "Mech_Sympathy": 7,
+      "Feedback": 7,
+      "Starts": 7,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 7
+    },
+    "Fernando Alonso": {
+      "Pace": 8,
+      "Qualifying": 8,
+      "Racecraft": 10,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 9,
+      "Consistency": 9,
+      "Aggression": 8,
+      "Composure": 10,
+      "Mech_Sympathy": 9,
+      "Feedback": 9,
+      "Starts": 8,
+      "ERS_Mgmt": 9,
+      "Engineer_Synergy": 9
+    },
+    "Lando Norris": {
+      "Pace": 9,
+      "Qualifying": 9,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 8,
+      "Consistency": 8,
+      "Aggression": 8,
+      "Composure": 8,
+      "Mech_Sympathy": 7,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 8,
+      "Engineer_Synergy": 9
+    },
+    "Valtteri Bottas": {
+      "Pace": 7,
+      "Qualifying": 8,
+      "Racecraft": 7,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 6,
+      "Composure": 8,
+      "Mech_Sympathy": 8,
+      "Feedback": 7,
+      "Starts": 8,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 8
+    },
+    "Oscar Piastri": {
+      "Pace": 8,
+      "Qualifying": 8,
+      "Racecraft": 7,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 7,
+      "Composure": 8,
+      "Mech_Sympathy": 7,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 8,
+      "Engineer_Synergy": 8
+    },
+    "Carlos Sainz": {
+      "Pace": 8,
+      "Qualifying": 8,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 8,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 7,
+      "Composure": 8,
+      "Mech_Sympathy": 8,
+      "Feedback": 8,
+      "Starts": 8,
+      "ERS_Mgmt": 8,
+      "Engineer_Synergy": 5
+    },
+    "Charles Leclerc": {
+      "Pace": 9,
+      "Qualifying": 10,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 8,
+      "Consistency": 7,
+      "Aggression": 8,
+      "Composure": 7,
+      "Mech_Sympathy": 7,
+      "Feedback": 8,
+      "Starts": 9,
+      "ERS_Mgmt": 8,
+      "Engineer_Synergy": 5
+    },
+    "Yuki Tsunoda": {
+      "Pace": 7,
+      "Qualifying": 7,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 6,
+      "Wet_Skill": 6,
+      "Consistency": 6,
+      "Aggression": 8,
+      "Composure": 6,
+      "Mech_Sympathy": 6,
+      "Feedback": 6,
+      "Starts": 7,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 6
+    },
+    "Nico Hulkenberg": {
+      "Pace": 7,
+      "Qualifying": 8,
+      "Racecraft": 7,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 7,
+      "Consistency": 8,
+      "Aggression": 6,
+      "Composure": 8,
+      "Mech_Sympathy": 7,
+      "Feedback": 7,
+      "Starts": 8,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 8
+    },
+    "Esteban Ocon": {
+      "Pace": 7,
+      "Qualifying": 7,
+      "Racecraft": 7,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 7,
+      "Consistency": 7,
+      "Aggression": 7,
+      "Composure": 7,
+      "Mech_Sympathy": 7,
+      "Feedback": 7,
+      "Starts": 7,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 7
+    },
+    "Alex Albon": {
+      "Pace": 7,
+      "Qualifying": 8,
+      "Racecraft": 8,
+      "Tyre_Mgmt": 7,
+      "Wet_Skill": 7,
+      "Consistency": 7,
+      "Aggression": 7,
+      "Composure": 8,
+      "Mech_Sympathy": 7,
+      "Feedback": 7,
+      "Starts": 8,
+      "ERS_Mgmt": 7,
+      "Engineer_Synergy": 6
+    },
+    "Logan Sargeant": {
+      "Pace": 6,
+      "Qualifying": 6,
+      "Racecraft": 6,
+      "Tyre_Mgmt": 6,
+      "Wet_Skill": 6,
+      "Consistency": 6,
+      "Aggression": 6,
+      "Composure": 6,
+      "Mech_Sympathy": 6,
+      "Feedback": 6,
+      "Starts": 6,
+      "ERS_Mgmt": 6,
+      "Engineer_Synergy": 6
+    },
+    "Al-Qahtani": {
+      "Pace": 4,
+      "Qualifying": 4,
+      "Racecraft": 4,
+      "Tyre_Mgmt": 5,
+      "Wet_Skill": 4,
+      "Consistency": 4,
+      "Aggression": 5,
+      "Composure": 3,
+      "Mech_Sympathy": 5,
+      "Feedback": 4,
+      "Starts": 4,
+      "ERS_Mgmt": 4,
+      "Engineer_Synergy": 4
+    },
+    "Franco Colapinto": {
+      "Pace": 6,
+      "Qualifying": 6,
+      "Racecraft": 6,
+      "Tyre_Mgmt": 6,
+      "Wet_Skill": 6,
+      "Consistency": 6,
+      "Aggression": 6,
+      "Composure": 6,
+      "Mech_Sympathy": 6,
+      "Feedback": 6,
+      "Starts": 6,
+      "ERS_Mgmt": 6,
+      "Engineer_Synergy": 6
+    }
+  },
+  "Team_Principal_Attributes": {
+    "Christian Horner": {
+      "Risk_Taking": 8,
+      "Politics": 9,
+      "Sponsor_Handling": 4,
+      "Driver_Management": 6,
+      "Development_Focus": 7
+    },
+    "Zak Brown": {
+      "Risk_Taking": 7,
+      "Politics": 7,
+      "Sponsor_Handling": 8,
+      "Driver_Management": 7,
+      "Development_Focus": 6
+    },
+    "Marc Gene": {
+      "Risk_Taking": 5,
+      "Politics": 5,
+      "Sponsor_Handling": 6,
+      "Driver_Management": 5,
+      "Development_Focus": 6
+    },
+    "Bruno Famin": {
+      "Risk_Taking": 6,
+      "Politics": 6,
+      "Sponsor_Handling": 5,
+      "Driver_Management": 6,
+      "Development_Focus": 6
+    },
+    "Toto Wolff": {
+      "Risk_Taking": 6,
+      "Politics": 10,
+      "Sponsor_Handling": 9,
+      "Driver_Management": 9,
+      "Development_Focus": 7
+    },
+    "James Vowles": {
+      "Risk_Taking": 6,
+      "Politics": 6,
+      "Sponsor_Handling": 6,
+      "Driver_Management": 7,
+      "Development_Focus": 6
+    },
+    "Andrea Stella": {
+      "Risk_Taking": 5,
+      "Politics": 6,
+      "Sponsor_Handling": 6,
+      "Driver_Management": 6,
+      "Development_Focus": 6
+    },
+    "Franz Tost": {
+      "Risk_Taking": 6,
+      "Politics": 5,
+      "Sponsor_Handling": 5,
+      "Driver_Management": 6,
+      "Development_Focus": 6
+    },
+    "Koji Sato": {
+      "Risk_Taking": 5,
+      "Politics": 5,
+      "Sponsor_Handling": 7,
+      "Driver_Management": 5,
+      "Development_Focus": 5
+    },
+    "Team Directorate": {
+      "Risk_Taking": 4,
+      "Politics": 7,
+      "Sponsor_Handling": 8,
+      "Driver_Management": 6,
+      "Development_Focus": 5
+    }
+  },
+  "Driver_Health": {
+    "Max Verstappen": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Kimi Antonelli": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Daniel Ricciardo": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Lewis Hamilton": {
+      "Fitness": 86,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "George Russell": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Hazik": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Pierre Gasly": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Fernando Alonso": {
+      "Fitness": 86,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Lando Norris": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Valtteri Bottas": {
+      "Fitness": 86,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Oscar Piastri": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Carlos Sainz": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Charles Leclerc": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Yuki Tsunoda": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Nico Hulkenberg": {
+      "Fitness": 86,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Esteban Ocon": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Alex Albon": {
+      "Fitness": 90,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Logan Sargeant": {
+      "Fitness": 80,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Al-Qahtani": {
+      "Fitness": 80,
+      "Fatigue": 20,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    },
+    "Franco Colapinto": {
+      "Fitness": 85,
+      "Fatigue": 15,
+      "Injury_Status": "Healthy",
+      "Return_Round": null
+    }
+  },
+  "Health_Engine": {
+    "injury_rolls": {
+      "no_injury_pct": 70,
+      "minor_pct": 20,
+      "miss_pct": 8,
+      "season_end_pct": 2
+    },
+    "fatigue_rules": {
+      "b2b_race_add": 8,
+      "crash_add": 10,
+      "rest_reduce": 12,
+      "rest_fitness_gain": 2
+    },
+    "return_nerf_template": {
+      "Pace": -1,
+      "Consistency": -1,
+      "Aggression": -1,
+      "races": 2
+    }
+  },
+  "Reserve_Drivers": {
+    "ExxonMobil": [
+      "Liam Lawson",
+      "Ayumu Iwasa"
+    ],
+    "McLaren": [
+      "Pato O'Ward",
+      "Ugo Ugochukwu"
+    ],
+    "Ferrari": [
+      "Oliver Bearman",
+      "Robert Shwartzman"
+    ],
+    "Alpine": [
+      "Jack Doohan",
+      "Victor Martins"
+    ],
+    "PETRONAS": [
+      "Frederik Vesti",
+      "Mick Schumacher"
+    ],
+    "Williams": [
+      "Zak O'Sullivan"
+    ],
+    "Shell Future GP": [
+      "Liam Lawson",
+      "Mick Schumacher"
+    ],
+    "Mazda": [
+      "Th\u00e9o Pourchaire",
+      "Gabriel Bortoleto"
+    ],
+    "Toyota": [
+      "Ritomo Miyata",
+      "Nyck de Vries"
+    ],
+    "Aramco": [
+      "Felipe Drugovich",
+      "Stoffel Vandoorne"
+    ]
+  },
+  "Race_Weekend_Hook": {
+    "order": [
+      "generate_weather",
+      "apply_parc_ferme_setup_risk",
+      "apply_fuel_ers_pacing",
+      "apply_fatigue",
+      "process_crash_injuries",
+      "assign_reserves",
+      "apply_return_nerfs",
+      "apply_sc_vsc",
+      "apply_re_engineer_effects",
+      "render_tyre_impact",
+      "apply_fia_enforcement"
+    ],
+    "notes": "Weather -> Parc Ferme -> Fuel/ERS -> Health -> Reserves -> Return nerfs -> SC/VSC -> Race Engineer effects. Run post-qualifying & post-race as needed. | Render tyre impact after Quali before race digest."
+  },
+  "Race_Engineer_Effect": {
+    "weights": {
+      "Strategy_IQ": 0.6,
+      "Tyre_Management": 0.4,
+      "Pressure": 0.4,
+      "Synergy": 0.8,
+      "Innovation": 0.3
+    },
+    "formulas": {
+      "strategy_bonus": "Strategy_IQ*0.6 + Innovation*0.3 + Pressure*0.1",
+      "tyre_life_delta": "Tyre_Management*0.5 + Synergy*0.2",
+      "pressure_clutch": "Pressure*0.6 + Synergy*0.4",
+      "bond_score": "(driver.Engineer_Synergy + engineer.Synergy)/2"
+    },
+    "effects": {
+      "pit_timing": "Improves undercut/overcut success chance based on strategy_bonus and bond_score",
+      "tyre_deg": "Reduces effective deg using tyre_life_delta; stacks with Driver Tyre_Mgmt and Track heat",
+      "restart_errors": "Lower with pressure_clutch; affects SC/VSC restarts and double stacks",
+      "innovation_risk": "High Innovation increases upside but adds small reliability risk"
+    },
+    "hook": "Apply per driver after Track PI and before random chaos."
+  },
+  "Hall_of_Fame": {
+    "2028": {
+      "DriversTop10": [
+        {
+          "pos": 1,
+          "name": "Max Verstappen",
+          "team": "ExxonMobil",
+          "points": 431
+        },
+        {
+          "pos": 2,
+          "name": "Kimi Antonelli",
+          "team": "McLaren",
+          "points": 333
+        },
+        {
+          "pos": 3,
+          "name": "Pierre Gasly",
+          "team": "Ferrari",
+          "points": 327
+        },
+        {
+          "pos": 4,
+          "name": "Oscar Piastri",
+          "team": "McLaren",
+          "points": 266
+        },
+        {
+          "pos": 5,
+          "name": "Daniel Ricciardo",
+          "team": "Alpine",
+          "points": 239
+        },
+        {
+          "pos": 6,
+          "name": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "points": 236
+        },
+        {
+          "pos": 7,
+          "name": "Esteban Ocon",
+          "team": "Alpine",
+          "points": 176
+        },
+        {
+          "pos": 8,
+          "name": "Lando Norris",
+          "team": "Mazda",
+          "points": 158
+        },
+        {
+          "pos": 9,
+          "name": "Fernando Alonso",
+          "team": "Aramco",
+          "points": 60
+        },
+        {
+          "pos": 10,
+          "name": "Carlos Sainz",
+          "team": "Ferrari",
+          "points": 55
+        }
+      ],
+      "ConstructorsTop10": [
+        {
+          "pos": 1,
+          "name": "ExxonMobil",
+          "points": 667
+        },
+        {
+          "pos": 2,
+          "name": "McLaren",
+          "points": 599
+        },
+        {
+          "pos": 3,
+          "name": "Alpine",
+          "points": 422
+        },
+        {
+          "pos": 4,
+          "name": "Ferrari",
+          "points": 327
+        },
+        {
+          "pos": 5,
+          "name": "Mazda",
+          "points": 167
+        },
+        {
+          "pos": 6,
+          "name": "PETRONAS",
+          "points": 146
+        },
+        {
+          "pos": 7,
+          "name": "Aramco",
+          "points": 60
+        },
+        {
+          "pos": 8,
+          "name": "Toyota",
+          "points": 45
+        },
+        {
+          "pos": 9,
+          "name": "Shell Velocity",
+          "points": 15
+        },
+        {
+          "pos": 10,
+          "name": "Williams",
+          "points": 12
+        }
+      ]
+    },
+    "2029 (current)": {
+      "DriversTop10": [
+        {
+          "pos": 1,
+          "name": "Kimi Antonelli",
+          "team": "McLaren",
+          "points": 172
+        },
+        {
+          "pos": 2,
+          "name": "Max Verstappen",
+          "team": "ExxonMobil",
+          "points": 172
+        },
+        {
+          "pos": 3,
+          "name": "Daniel Ricciardo",
+          "team": "Alpine",
+          "points": 117
+        },
+        {
+          "pos": 4,
+          "name": "Hazik",
+          "team": "PETRONAS",
+          "points": 92
+        },
+        {
+          "pos": 5,
+          "name": "Verstappen",
+          "team": "",
+          "points": 75
+        },
+        {
+          "pos": 6,
+          "name": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "points": 72
+        },
+        {
+          "pos": 7,
+          "name": "George Russell",
+          "team": "Williams",
+          "points": 68
+        },
+        {
+          "pos": 8,
+          "name": "Pierre Gasly",
+          "team": "Ferrari",
+          "points": 52
+        },
+        {
+          "pos": 9,
+          "name": "Antonelli",
+          "team": "",
+          "points": 48
+        },
+        {
+          "pos": 10,
+          "name": "Ricciardo",
+          "team": "",
+          "points": 48
+        }
+      ],
+      "ConstructorsTop10": [
+        {
+          "pos": 1,
+          "name": "ExxonMobil",
+          "points": 244
+        },
+        {
+          "pos": 2,
+          "name": "McLaren",
+          "points": 172
+        },
+        {
+          "pos": 3,
+          "name": "Alpine",
+          "points": 117
+        },
+        {
+          "pos": 4,
+          "name": "PETRONAS",
+          "points": 92
+        },
+        {
+          "pos": 5,
+          "name": "Williams",
+          "points": 68
+        },
+        {
+          "pos": 6,
+          "name": "Ferrari",
+          "points": 52
+        },
+        {
+          "pos": 7,
+          "name": "Mazda",
+          "points": 49
+        },
+        {
+          "pos": 8,
+          "name": "Aramco",
+          "points": 18
+        },
+        {
+          "pos": 9,
+          "name": "Shell Future GP",
+          "points": 4
+        },
+        {
+          "pos": 10,
+          "name": "Toyota",
+          "points": 0
+        }
+      ],
+      "Race_Winners": [
+        {
+          "round": 1,
+          "gp": "Australian GP",
+          "winner": "Antonelli"
+        },
+        {
+          "round": 2,
+          "gp": "Malaysian GP",
+          "winner": "Verstappen"
+        },
+        {
+          "round": 3,
+          "gp": "Saudi Arabian GP",
+          "winner": "Verstappen"
+        },
+        {
+          "round": 4,
+          "gp": "Bahrain GP",
+          "winner": "Antonelli"
+        },
+        {
+          "round": 5,
+          "gp": "Chinese GP",
+          "winner": "Verstappen"
+        },
+        {
+          "round": 6,
+          "gp": "Monaco GP",
+          "winner": "Antonelli"
+        },
+        {
+          "round": 7,
+          "gp": "Singapore GP",
+          "winner": "Antonelli"
+        },
+        {
+          "round": 8,
+          "gp": "Japanese GP",
+          "winner": "Verstappen"
+        },
+        {
+          "round": 9,
+          "gp": "Italian GP",
+          "winner": "Verstappen"
+        },
+        {
+          "round": 10,
+          "gp": "Singapore GP (Night II)",
+          "winner": "Verstappen"
+        },
+        {
+          "round": 11,
+          "gp": "Brazilian GP",
+          "winner": "Verstappen"
+        }
+      ]
+    },
+    "Standings_2028": {
+      "Drivers": [
+        {
+          "pos": 1,
+          "name": "Max Verstappen",
+          "team": "ExxonMobil",
+          "points": 431
+        },
+        {
+          "pos": 2,
+          "name": "Kimi Antonelli",
+          "team": "McLaren",
+          "points": 333
+        },
+        {
+          "pos": 3,
+          "name": "Pierre Gasly",
+          "team": "Ferrari",
+          "points": 327
+        },
+        {
+          "pos": 4,
+          "name": "Oscar Piastri",
+          "team": "McLaren",
+          "points": 266
+        },
+        {
+          "pos": 5,
+          "name": "Daniel Ricciardo",
+          "team": "Alpine",
+          "points": 239
+        },
+        {
+          "pos": 6,
+          "name": "Lewis Hamilton",
+          "team": "ExxonMobil",
+          "points": 236
+        },
+        {
+          "pos": 7,
+          "name": "Esteban Ocon",
+          "team": "Alpine",
+          "points": 176
+        },
+        {
+          "pos": 8,
+          "name": "Lando Norris",
+          "team": "Mazda",
+          "points": 158
+        },
+        {
+          "pos": 9,
+          "name": "Fernando Alonso",
+          "team": "Aramco",
+          "points": 60
+        },
+        {
+          "pos": 10,
+          "name": "Carlos Sainz",
+          "team": "Ferrari",
+          "points": 55
+        }
+      ],
+      "Constructors": [
+        {
+          "pos": 1,
+          "name": "ExxonMobil",
+          "points": 667
+        },
+        {
+          "pos": 2,
+          "name": "McLaren",
+          "points": 599
+        },
+        {
+          "pos": 3,
+          "name": "Alpine",
+          "points": 422
+        },
+        {
+          "pos": 4,
+          "name": "Ferrari",
+          "points": 327
+        },
+        {
+          "pos": 5,
+          "name": "Mazda",
+          "points": 167
+        },
+        {
+          "pos": 6,
+          "name": "PETRONAS",
+          "points": 146
+        },
+        {
+          "pos": 7,
+          "name": "Aramco",
+          "points": 60
+        },
+        {
+          "pos": 8,
+          "name": "Toyota",
+          "points": 45
+        },
+        {
+          "pos": 9,
+          "name": "Shell Velocity",
+          "points": 15
+        },
+        {
+          "pos": 10,
+          "name": "Williams",
+          "points": 12
+        }
+      ]
+    }
+  },
+  "Weather_Engine": {
+    "session_model": {
+      "sessions": [
+        "Practice",
+        "Qualifying",
+        "Race"
+      ],
+      "race_weight": 1.0,
+      "quali_weight": 0.7,
+      "practice_weight": 0.5
+    },
+    "gen_params": {
+      "base_hot_mu_C": 30,
+      "base_hot_sigma": 4,
+      "base_cold_mu_C": 22,
+      "base_cold_sigma": 3,
+      "rain_intensity_levels": [
+        "Light",
+        "Intermittent",
+        "Heavy"
+      ],
+      "crossover": {
+        "Inter_to_Slick": 1.5,
+        "Slick_to_Inter": 2.0,
+        "Inter_to_Wet": 10.0
+      }
+    },
+    "rain_prob_by_circuit": {
+      "Spa-Francorchamps": 0.45,
+      "Montreal": 0.35,
+      "Silverstone": 0.3,
+      "Suzuka": 0.3,
+      "Singapore": 0.4,
+      "Interlagos": 0.28,
+      "Shanghai": 0.2,
+      "Imola": 0.22,
+      "Zandvoort": 0.25,
+      "Monaco": 0.2,
+      "Mexico City": 0.12,
+      "Barcelona-Catalunya": 0.1,
+      "Monza": 0.1,
+      "Sakhir": 0.05,
+      "Losail": 0.05,
+      "Jeddah": 0.06,
+      "Sepang": 0.28,
+      "Melbourne": 0.18,
+      "Hungaroring": 0.2,
+      "Red Bull Ring": 0.22,
+      "Yas Marina": 0.03,
+      "Miami": 0.25,
+      "Las Vegas": 0.1,
+      "Baku": 0.12,
+      "Circuit of the Americas": 0.18,
+      "Hockenheim": 0.22,
+      "Nurburgring": 0.28,
+      "Kyalami": 0.22,
+      "Mexico": 0.12
+    },
+    "impact_modifiers": {
+      "light": {
+        "Driver.Wet_Skill": 1.0,
+        "Driver.Composure": 0.5,
+        "Engineer.Pressure": 0.3
+      },
+      "intermittent": {
+        "Driver.Wet_Skill": 1.5,
+        "Driver.Composure": 0.7,
+        "Engineer.Strategy_IQ": 0.6
+      },
+      "heavy": {
+        "Driver.Wet_Skill": 2.0,
+        "Driver.Composure": 1.0,
+        "Car.Reliability_General": -1.0
+      }
+    },
+    "tyre_wet_degs": {
+      "Inter": 1.15,
+      "Wet": 1.4
+    },
+    "notes": "Generates temps & rain per session. Applies Wet_Skill/Composure bonuses; changes pit logic via crossover thresholds."
+  },
+  "SC_VSC_Engine": {
+    "base_probs": {
+      "HighSpeedPower": {
+        "SC": 0.35,
+        "VSC": 0.25
+      },
+      "TwistyStreet": {
+        "SC": 0.55,
+        "VSC": 0.3
+      },
+      "BalancedAllRounder": {
+        "SC": 0.25,
+        "VSC": 0.2
+      },
+      "StopStartHairpins": {
+        "SC": 0.3,
+        "VSC": 0.25
+      },
+      "AltitudeSpecial": {
+        "SC": 0.28,
+        "VSC": 0.2
+      },
+      "ChaosWildcard": {
+        "SC": 0.6,
+        "VSC": 0.35
+      }
+    },
+    "rain_multipliers": {
+      "Light": 1.2,
+      "Intermittent": 1.4,
+      "Heavy": 1.8
+    },
+    "pit_delta_randomness": {
+      "SC": [
+        8,
+        14
+      ],
+      "VSC": [
+        4,
+        7
+      ]
+    },
+    "unsafe_release_risk": {
+      "base_pct": 0.02,
+      "pressure_bad_bonus_pct": 0.03
+    },
+    "multi_car_incident_pct": 0.18,
+    "notes": "Determines SC/VSC occurrence by track type, boosted by rain. Adds pit delta randomness & unsafe release checks."
+  },
+  "Fuel_ERS_Engine": {
+    "fuel": {
+      "start_delta_kg": {
+        "max_push": 3.0,
+        "balanced": 0.0,
+        "save": -2.0
+      },
+      "lift_and_coast_threshold_C": 33,
+      "pace_penalties_s_per_lap": {
+        "max_push": -0.1,
+        "balanced": 0.0,
+        "save": 0.15
+      }
+    },
+    "ers": {
+      "maps": {
+        "Attack": {
+          "lap_time_s": -0.12,
+          "harvest_next_lap_s": 0.06
+        },
+        "Balanced": {
+          "lap_time_s": 0.0,
+          "harvest_next_lap_s": 0.0
+        },
+        "Harvest": {
+          "lap_time_s": 0.08,
+          "harvest_next_lap_s": -0.04
+        }
+      },
+      "track_recovery_bias": {
+        "HighSpeedPower": 0.9,
+        "TwistyStreet": 0.8,
+        "BalancedAllRounder": 1.0,
+        "StopStartHairpins": 1.1,
+        "AltitudeSpecial": 0.9,
+        "ChaosWildcard": 1.0
+      }
+    },
+    "notes": "Adds fuel load strategy and ERS deploy/harvest pacing. Interacts with hot tracks and stop-start layouts."
+  },
+  "Parc_Ferme_Engine": {
+    "risk_model": {
+      "base_setup_risk_pct": 0.1,
+      "tp_risk_contrib": 0.02,
+      "eng_innov_contrib": 0.02,
+      "reward_range_s_per_lap": [
+        -0.2,
+        -0.05
+      ],
+      "penalty_range_s_per_lap": [
+        0.08,
+        0.25
+      ],
+      "reliability_hit_pct": 0.05,
+      "td_extra_fail_pct": 0.02
+    },
+    "parc_ferme_rules": {
+      "quali_to_race_lock": true,
+      "allowed_changes": [
+        "front_wing_trim",
+        "tyre_pressure"
+      ],
+      "scrutineering_fail_pct": 0.03
+    },
+    "notes": "TP Risk & Engineer Innovation increase setup gamble swings. Parc Ferme restricts changes; includes scrutineering risk."
+  },
+  "Race_Weekend_Format": {
+    "sections": [
+      "Weekend_Intro",
+      "Qualifying",
+      "Tyre_Impact_During_Weekend",
+      "Race_Digest_With_Radio",
+      "Race_Result_Full",
+      "Championship_Standings",
+      "Post_Race_Fallout"
+    ],
+    "Weekend_Intro": {
+      "fields": [
+        "Track",
+        "Track_Type",
+        "Weather_Forecast",
+        "Boardroom_Buzz",
+        "Driver_Health"
+      ]
+    },
+    "Qualifying": {
+      "fields": [
+        "Top10_Grid",
+        "Surprise_Eliminations",
+        "Radio_Snippet"
+      ],
+      "Grid_Table_Columns": [
+        "Pos",
+        "Driver",
+        "Team",
+        "Starting_Tyre"
+      ],
+      "Starting_Tyre_In_Grid": true
+    },
+    "Race_Digest_With_Radio": {
+      "event_structure": {
+        "Lap_Event": "Short narration (overtakes, pit stops, SC/VSC, crashes)",
+        "Radio": "Driver/Engineer comms string"
+      },
+      "max_events": 6,
+      "example": [
+        {
+          "Lap_Event": "L12 Verstappen\u2019s softs fade; undercut threat forms.",
+          "Radio": "Lambiase: 'Box, Max. Push now, target out-lap.'"
+        }
+      ]
+    },
+    "Race_Result_Full": {
+      "classification": "All drivers listed",
+      "fields": [
+        "Pos",
+        "Driver",
+        "Team",
+        "Notes"
+      ],
+      "notes": "Show DNF/Retirements in Notes."
+    },
+    "Championship_Standings": {
+      "Drivers": "Full table, all drivers",
+      "Constructors": "Full table, all teams"
+    },
+    "Post_Race_Fallout": {
+      "fields": [
+        "Boardroom_Events",
+        "FIA_Rulings",
+        "Rumour_Feed"
+      ]
+    },
+    "narration_style": "Compact digest with radio chatter (4\u20136 highlights max).",
+    "Tyre_Impact_During_Weekend": {
+      "fields": [
+        "Stint_Evolution",
+        "Tyre_Battles",
+        "Radio_Snippets_Tyre"
+      ],
+      "notes": "Show who boxed when, pace fade/gain by compound, key undercut/overcut, and tyre-focused radio."
+    },
+    "enforce_strict": true
+  },
+  "Tyre_Analytics": {
+    "compound_baseline": {
+      "Soft": {
+        "pace_delta_s_per_lap": -0.18,
+        "degradation_rate": "high",
+        "ideal_use": [
+          "qualifying",
+          "early undercut"
+        ]
+      },
+      "Medium": {
+        "pace_delta_s_per_lap": -0.08,
+        "degradation_rate": "medium",
+        "ideal_use": [
+          "balanced stints",
+          "SC flexibility"
+        ]
+      },
+      "Hard": {
+        "pace_delta_s_per_lap": 0.0,
+        "degradation_rate": "low",
+        "ideal_use": [
+          "long stints",
+          "track position"
+        ]
+      }
+    },
+    "track_type_bias": {
+      "TwistyStreet": {
+        "priority": [
+          "Medium",
+          "Soft",
+          "Hard"
+        ],
+        "notes": "Grip & traction win; hards struggle on restarts."
+      },
+      "HighSpeedPower": {
+        "priority": [
+          "Hard",
+          "Medium",
+          "Soft"
+        ],
+        "notes": "Softs overheat; long straights reward low-deg."
+      },
+      "BalancedAllRounder": {
+        "priority": [
+          "Medium",
+          "Hard",
+          "Soft"
+        ],
+        "notes": "All-round; Medium often best race tyre."
+      },
+      "StopStartHairpins": {
+        "priority": [
+          "Medium",
+          "Hard",
+          "Soft"
+        ],
+        "notes": "Braking/traction heavy; Softs shred quickly."
+      },
+      "AltitudeSpecial": {
+        "priority": [
+          "Hard",
+          "Medium",
+          "Soft"
+        ],
+        "notes": "Cooling & fuel efficiency matter; conserve tyres."
+      },
+      "ChaosWildcard": {
+        "priority": [
+          "Medium",
+          "Soft",
+          "Hard"
+        ],
+        "notes": "SC/VSC likely; flexible compounds favoured."
+      },
+      "HotWearHeavy": {
+        "priority": [
+          "Hard",
+          "Medium",
+          "Soft"
+        ],
+        "notes": "Heat punishes soft compounds."
+      }
+    },
+    "heat_rules": {
+      "hot_threshold_C": 32,
+      "cold_threshold_C": 25,
+      "hot_soft_penalty": 0.06,
+      "cold_warmup_penalty": 0.04
+    },
+    "rendering": {
+      "stint_buckets_example": [
+        "L1-L12",
+        "L13-L25",
+        "L26-L40",
+        "L41-Finish"
+      ],
+      "radio_templates": [
+        "Tyres are gone!",
+        "Let\u2019s extend 2 more laps.",
+        "Plan B confirm?",
+        "Box, box for inters."
+      ]
+    },
+    "notes": "This module provides guidance to narration & AI calls; values are narrative weights, not strict physics."
+  },
+  "UI_Defaults": {
+    "Grid_Table_Default_Columns": [
+      "Pos",
+      "Driver",
+      "Team",
+      "Starting_Tyre"
+    ]
+  },
+  "Tyre_Model": {
+    "compounds": {
+      "Hard": "C2",
+      "Medium": "C3",
+      "Soft": "C4"
+    },
+    "base_deg_per_lap": {
+      "Hard": 0.035,
+      "Medium": 0.05,
+      "Soft": 0.07
+    },
+    "temp_factor_ref_c": 25,
+    "morale_factors": {
+      "High": -0.01,
+      "Neutral": 0.0,
+      "Low": 0.01
+    },
+    "style_factors": {
+      "Aggressive": 0.01,
+      "Neutral": 0.0,
+      "Smooth": -0.01
+    },
+    "td029_chassis_balance_penalty": 0.02,
+    "fuel_factor_scale": 0.15,
+    "sc_vsc_effects": {
+      "delta_pit_loss_reduction": 0.33,
+      "warmup_penalty_cold": 0.8
+    }
+  },
+  "Track_Tyre_Profile": {
+    "Monza": {
+      "compounds": {
+        "H": "C2",
+        "M": "C3",
+        "S": "C4"
+      },
+      "abrasiveness": 1.0,
+      "layout": "HighSpeedPower"
+    },
+    "Singapore": {
+      "compounds": {
+        "H": "C3",
+        "M": "C4",
+        "S": "C5"
+      },
+      "abrasiveness": 1.15,
+      "layout": "TwistyStreet"
+    },
+    "Interlagos": {
+      "compounds": {
+        "H": "C2",
+        "M": "C3",
+        "S": "C4"
+      },
+      "abrasiveness": 1.1,
+      "layout": "AltitudeSpecial"
+    }
+  },
+  "Hard_Coded_Weekend_Mode": true,
+  "FIA_Engine": {
+    "enabled": true,
+    "politics_bias": {
+      "Christian Horner": 0.1,
+      "Toto Wolff": -0.05,
+      "Marc Gene": 0.0,
+      "Bruno Famin": 0.0,
+      "Zak Brown": 0.0,
+      "Team Directorate": 0.0,
+      "Koji Sato": 0.0
+    },
+    "scrutineering": {
+      "base_fail_pct": 0.03,
+      "td_active": [
+        "TD-029"
+      ],
+      "td_extra_fail_pct": 0.02,
+      "penalty_menu": {
+        "fine_eur_m": [
+          2,
+          5
+        ],
+        "dsq_single_race_pct": 0.25
+      }
+    },
+    "mandates": {
+      "two_driver_mandate": {
+        "grace_after_round": 5,
+        "grace_rounds": 2,
+        "deadline_round": 7,
+        "auto_actions": {
+          "post_deadline_each_round": {
+            "fine_eur_m": 25,
+            "constructors_points_deduction": {
+              "value": 50,
+              "suspended": true
+            },
+            "dev_budget_lock_pct": 0.25
+          }
+        },
+        "enforcement_policy": {
+          "active_unique_drivers_only": true,
+          "active_driver_source": "Teams[*].drivers",
+          "ignore_engineer_mappings": true,
+          "ignore_placeholders": true
+        }
+      },
+      "transfer_deadline": {
+        "deadline_round": 15,
+        "crb_active": true,
+        "arbitration_window_rounds": 1,
+        "leak_morale_penalty": -5,
+        "notes": "All major driver moves must be declared by R15. CRB arbitration within 1 round. Leaks hurt morale."
+      }
+    },
+    "budget_cap": {
+      "overspend_penalties": [
+        {
+          "threshold_pct": 2,
+          "fine_eur_m": 5,
+          "windtunnel_cut_pct": 5
+        },
+        {
+          "threshold_pct": 5,
+          "fine_eur_m": 15,
+          "windtunnel_cut_pct": 10
+        },
+        {
+          "threshold_pct": 10,
+          "fine_eur_m": 30,
+          "windtunnel_cut_pct": 20,
+          "points_deduction": 25
+        }
+      ],
+      "random_audit_pct": 0.2
+    },
+    "appeals": {
+      "allowed": true,
+      "window_rounds": 2,
+      "success_base_pct": 0.25,
+      "bias_weight": 0.5,
+      "outcomes": [
+        "upheld",
+        "reduced",
+        "overturned"
+      ]
+    },
+    "media_impact": {
+      "on_penalty": {
+        "morale_delta": -1,
+        "sponsor_trust_delta": -2
+      },
+      "on_appeal_won": {
+        "morale_delta": 1,
+        "sponsor_trust_delta": 1
+      }
+    },
+    "randomness": {
+      "seed": null,
+      "round_jitter_pct": [
+        0,
+        0.03
+      ]
+    },
+    "logging": {
+      "write_post_race_fallout": true,
+      "write_midweek_bulletin": true
+    }
+  },
+  "Midweek_Bulletin": [
+    "R12: FIA enforcer enabled; PETRONAS fined \u20ac25M at R11 (50pts suspended). Russell registered. Aggressive upgrades applied (+3 ENG, +3 COOL, +2 TOP).",
+    "R12: CTR applied; Russell fully PETRONAS; Williams penalised for 2-driver breach.",
+    "R12: Spa result ingested (VER-Ant-RIC); Drivers/Constructors recalculated from season table.",
+    "R13: Williams promote Franco Colapinto to meet FIA two-driver mandate; fines remain historical only."
+  ],
+  "Engineer_Free_Agent_Pool": [],
+  "Transfer_History": [
+    {
+      "driver": "George Russell",
+      "from_team": "Williams",
+      "to_team": "PETRONAS",
+      "effective_round": 12,
+      "engineer_policy": "reassign_or_pool",
+      "timestamp": "2025-08-24 15:36:36"
+    },
+    {
+      "driver": "Franco Colapinto",
+      "from_team": "Williams Reserves",
+      "to_team": "Williams",
+      "effective_round": 13,
+      "engineer_policy": "retain_existing",
+      "timestamp": "2025-08-24 22:11:30"
+    },
+    {
+      "engineer": "Matteo Bianchi",
+      "from_team": "Free Agent",
+      "to_team": "ExxonMobil",
+      "role": "Race Engineer to Max Verstappen",
+      "effective_round": 1,
+      "timestamp": "2025-08-24 22:29:12"
+    }
+  ],
+  "Clean_Transfer_Rule": {
+    "op": "transfer_driver_rule",
+    "enforcement": {
+      "unique_driver_per_team": true,
+      "unique_engineer_binding": true,
+      "update_driver_team_field": true,
+      "purge_from_reserves": true,
+      "recalc_fia_two_driver_post": true
+    },
+    "engineer_policy_default": "reassign_or_pool",
+    "notes": "Atomic transfer: remove from old team, add to new team, move/clear engineer, update Drivers table, recalc FIA. Idempotent."
+  },
+  "FIA": {
+    "president": "Helena Weiss",
+    "strict_mode": true,
+    "election_2029": {
+      "date": "2029-11-01",
+      "incumbent": "Jean-Michel Bureaucrat",
+      "challenger": "Helena Weiss",
+      "votes": {
+        "Weiss": 8,
+        "Bureaucrat": 3
+      },
+      "result": "Helena Weiss elected"
+    },
+    "policy_pack_R16_onward": {
+      "scrutineering_fail": "DSQ",
+      "two_driver_mandate": "freeze_constructors_points_until_compliant",
+      "budget_cap_overrun": {
+        "points_deduction": 25,
+        "next_season_aero_cut_percent": 40
+      },
+      "on_track_infractions": {
+        "weaving_or_unsafe_release": "10s_time_penalty_or_next_race_grid_drop_post_race"
+      },
+      "appeals_window_hours": 24,
+      "random_tech_audit_probability": 0.3
+    },
+    "penalties_2029": [
+      {
+        "round": 11,
+        "team": "PETRONAS",
+        "breach": "two_driver_mandate",
+        "fine_eur_millions": 25,
+        "points_deduction_suspended": 50
+      },
+      {
+        "round": 12,
+        "team": "Williams",
+        "breach": "two_driver_mandate",
+        "fine_eur_millions": 25,
+        "points_deduction_suspended": 50
+      },
+      {
+        "round": 16,
+        "team": "ExxonMobil",
+        "breach": "flexi_floor",
+        "ruling": "DSQ Verstappen",
+        "fine_eur_millions": 5
+      },
+      {
+        "round": 19,
+        "team": "Ferrari",
+        "breach": "plank_wear",
+        "ruling": "DSQ Gasly"
+      }
+    ]
+  },
+  "transfers": {
+    "engineer_moves": [
+      {
+        "round": 17,
+        "from_team": "ExxonMobil",
+        "to_team": "Aramco",
+        "engineer": "Gianpiero Lambiase",
+        "driver": "Al-Qahtani"
+      },
+      {
+        "round": 22,
+        "from_team": "Aramco",
+        "to_team": "McLaren",
+        "engineer": "Gianpiero Lambiase",
+        "driver": "Oscar Piastri"
+      }
+    ]
+  },
+  "season_2029": {
+    "race_winners": [
+      {
+        "round": 1,
+        "gp": "Australia",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 2,
+        "gp": "Malaysia",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 3,
+        "gp": "Saudi",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 4,
+        "gp": "Bahrain",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 5,
+        "gp": "China",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 6,
+        "gp": "Monaco",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 7,
+        "gp": "Singapore",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 8,
+        "gp": "Japan",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 9,
+        "gp": "Italy",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 10,
+        "gp": "Singapore II",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 11,
+        "gp": "Brazil",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 12,
+        "gp": "Belgium",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 13,
+        "gp": "Silverstone",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 14,
+        "gp": "Hockenheim",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 15,
+        "gp": "Hungary",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 16,
+        "gp": "Monza",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren",
+        "note": "VER DSQ flexi-floor"
+      },
+      {
+        "round": 17,
+        "gp": "Singapore (Night)",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 18,
+        "gp": "Japan (Suzuka)",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 19,
+        "gp": "Mexico",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren",
+        "note": "Gasly DSQ plank"
+      },
+      {
+        "round": 20,
+        "gp": "Brazil (Interlagos)",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 21,
+        "gp": "Las Vegas",
+        "winner": "Kimi Antonelli",
+        "team": "McLaren"
+      },
+      {
+        "round": 22,
+        "gp": "Qatar",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      },
+      {
+        "round": 23,
+        "gp": "Abu Dhabi",
+        "winner": "Max Verstappen",
+        "team": "ExxonMobil"
+      }
+    ],
+    "final_driver_standings": [
+      {
+        "pos": 1,
+        "driver": "Kimi Antonelli",
+        "team": "McLaren",
+        "points": 441
+      },
+      {
+        "pos": 2,
+        "driver": "Max Verstappen",
+        "team": "ExxonMobil",
+        "points": 402
+      },
+      {
+        "pos": 3,
+        "driver": "Daniel Ricciardo",
+        "team": "Alpine",
+        "points": 268
+      },
+      {
+        "pos": 4,
+        "driver": "Hazik",
+        "team": "PETRONAS",
+        "points": 268,
+        "tiebreak": "lost to Ricciardo on countback"
+      },
+      {
+        "pos": 5,
+        "driver": "Lewis Hamilton",
+        "team": "ExxonMobil",
+        "points": 208
+      },
+      {
+        "pos": 6,
+        "driver": "George Russell",
+        "team": "PETRONAS",
+        "points": 198
+      },
+      {
+        "pos": 7,
+        "driver": "Charles Leclerc",
+        "team": "Mazda",
+        "points": 132
+      },
+      {
+        "pos": 8,
+        "driver": "Fernando Alonso",
+        "team": "Aramco",
+        "points": 118
+      },
+      {
+        "pos": 9,
+        "driver": "Pierre Gasly",
+        "team": "Ferrari",
+        "points": 110
+      },
+      {
+        "pos": 10,
+        "driver": "Lando Norris",
+        "team": "Mazda",
+        "points": 98
+      },
+      {
+        "pos": 11,
+        "driver": "Oscar Piastri",
+        "team": "McLaren",
+        "points": 32
+      },
+      {
+        "pos": 12,
+        "driver": "Valtteri Bottas",
+        "team": "Shell Future GP",
+        "points": 8
+      },
+      {
+        "pos": 13,
+        "driver": "Yuki Tsunoda",
+        "team": "Ferrari",
+        "points": 6
+      },
+      {
+        "pos": 14,
+        "driver": "Alex Albon",
+        "team": "Shell Future GP",
+        "points": 0
+      },
+      {
+        "pos": 15,
+        "driver": "Logan Sargeant",
+        "team": "Williams",
+        "points": 0
+      },
+      {
+        "pos": 16,
+        "driver": "Carlos Sainz",
+        "team": "Toyota",
+        "points": 0
+      },
+      {
+        "pos": 17,
+        "driver": "Nico Hulkenberg",
+        "team": "Toyota",
+        "points": 0
+      },
+      {
+        "pos": 18,
+        "driver": "Al-Qahtani",
+        "team": "Aramco",
+        "points": 0
+      },
+      {
+        "pos": 19,
+        "driver": "Esteban Ocon",
+        "team": "Alpine",
+        "points": 0
+      }
+    ],
+    "final_constructor_standings": [
+      {
+        "pos": 1,
+        "constructor": "ExxonMobil",
+        "points": 680
+      },
+      {
+        "pos": 2,
+        "constructor": "McLaren",
+        "points": 473
+      },
+      {
+        "pos": 3,
+        "constructor": "PETRONAS",
+        "points": 406
+      },
+      {
+        "pos": 4,
+        "constructor": "Alpine",
+        "points": 268
+      },
+      {
+        "pos": 5,
+        "constructor": "Ferrari",
+        "points": 104
+      },
+      {
+        "pos": 6,
+        "constructor": "Mazda",
+        "points": 230
+      },
+      {
+        "pos": 7,
+        "constructor": "Aramco",
+        "points": 118
+      },
+      {
+        "pos": 8,
+        "constructor": "Shell Future GP",
+        "points": 8
+      },
+      {
+        "pos": 9,
+        "constructor": "Williams",
+        "points": 0
+      },
+      {
+        "pos": 10,
+        "constructor": "Toyota",
+        "points": 0
+      }
+    ]
+  },
+  "boardroom_fallout_2029": {
+    "R16_Monza": {
+      "McLaren": "Antonelli win after VER DSQ; title back on.",
+      "ExxonMobil": "Lawyers + appeal; morale -40.",
+      "PETRONAS": "Happy with strict FIA.",
+      "Ferrari": "Mixed; pressure rising."
+    },
+    "R17_Singapore": {
+      "McLaren": "Win again; momentum.",
+      "ExxonMobil": "Seething but cleared in scrutineering.",
+      "Ferrari": "Internal war continues."
+    },
+    "R18_Suzuka": {
+      "ExxonMobil": "P2 amid strategy errors; Verstappen misses GP.",
+      "McLaren": "Win; 25pt lead.",
+      "Aramco": "GP praised for P13 with Al-Qahtani."
+    },
+    "R19_Mexico": {
+      "McLaren": "Win; gap grows.",
+      "Ferrari": "Gasly DSQ; PR disaster."
+    },
+    "R20_Brazil": {
+      "McLaren": "Win; near title.",
+      "ExxonMobil": "Frustration extreme."
+    },
+    "R21_Vegas": {
+      "McLaren": "Win; 49pt lead.",
+      "ExxonMobil": "FIA warning for plank; panic."
+    },
+    "R22_Qatar": {
+      "ExxonMobil": "Win with VER; title still unlikely.",
+      "McLaren": "Antonelli P2; Piastri P4 first real points with GP."
+    },
+    "R23_AbuDhabi": {
+      "McLaren": "Antonelli seals title; Piastri P5.",
+      "ExxonMobil": "Win not enough; board threatens purges.",
+      "PETRONAS": "Podium for Hazik; solid P3 overall."
+    }
+  },
+  "yearbook_2029": {
+    "created_at": "2025-08-24T16:38:39.340066Z",
+    "summary": "Rookie Kimi Antonelli (McLaren) wins the 2029 Drivers' title. ExxonMobil take Constructors. FIA strict mode from R16 brings DSQs (VER Monza, GAS Mexico). Lambiase saga swings title narrative: leaves VER\u2192Al-Qahtani\u2192Piastri, nerfing ExxonMobil and reviving Piastri. PETRONAS steady with Hazik podiums. Ferrari implode internally. Alpine survive via Ricciardo. Season remembered for strict scrutineering and boardroom chaos.",
+    "highlights": [
+      "Antonelli rookie champion (441 pts)",
+      "Verstappen DSQ at Monza under strict FIA",
+      "Piastri resurrected by GP in final two races",
+      "Hazik podium machine; PETRONAS P3 constructors",
+      "Ferrari DSQ Mexico; internal civil war"
+    ]
+  },
+  "Archive": {
+    "Race_History_preR13": [
+      {
+        "round": 1,
+        "gp": "Australian GP",
+        "location": "Melbourne",
+        "top10": [
+          "Antonelli",
+          "Verstappen",
+          "Ricciardo",
+          "Gasly",
+          "Hazik",
+          "Hamilton",
+          "Russell",
+          "Alonso",
+          "Bottas",
+          "Norris"
+        ]
+      },
+      {
+        "round": 2,
+        "gp": "Malaysian GP",
+        "location": "Sepang",
+        "top10": [
+          "Verstappen",
+          "Antonelli",
+          "Ricciardo",
+          "Hazik",
+          "Gasly",
+          "Hamilton",
+          "Russell",
+          "Piastri",
+          "Alonso",
+          "Norris"
+        ]
+      },
+      {
+        "round": 3,
+        "gp": "Saudi Arabian GP",
+        "location": "Jeddah",
+        "top10": [
+          "Verstappen",
+          "Antonelli",
+          "Ricciardo",
+          "Gasly",
+          "Russell",
+          "Hazik",
+          "Alonso",
+          "Piastri",
+          "Bottas",
+          "Norris"
+        ]
+      },
+      {
+        "round": 4,
+        "gp": "Bahrain GP",
+        "location": "Sakhir",
+        "top10": [
+          "Antonelli",
+          "Verstappen",
+          "Ricciardo",
+          "Hamilton",
+          "Russell",
+          "Hazik",
+          "Piastri",
+          "Alonso",
+          "Norris",
+          "Bottas"
+        ]
+      },
+      {
+        "round": 5,
+        "gp": "Chinese GP",
+        "location": "Shanghai",
+        "top10": [
+          "Verstappen",
+          "Antonelli",
+          "Ricciardo",
+          "Hamilton",
+          "Russell",
+          "Gasly",
+          "Hazik",
+          "Alonso",
+          "Norris",
+          "Bottas"
+        ]
+      },
+      {
+        "round": 6,
+        "gp": "Monaco GP",
+        "location": "Monaco",
+        "top10": [
+          "Antonelli",
+          "Verstappen",
+          "Leclerc",
+          "Ricciardo",
+          "Hamilton",
+          "Russell",
+          "Hazik",
+          "Gasly",
+          "Alonso",
+          "Norris"
+        ]
+      },
+      {
+        "round": 7,
+        "gp": "Singapore GP",
+        "location": "Singapore",
+        "top10": [
+          "Antonelli",
+          "Verstappen",
+          "Ricciardo",
+          "Leclerc",
+          "Hazik",
+          "Russell",
+          "Hamilton",
+          "Gasly",
+          "Piastri",
+          "Alonso"
+        ]
+      },
+      {
+        "round": 8,
+        "gp": "Japanese GP",
+        "location": "Suzuka",
+        "top10": [
+          "Verstappen",
+          "Antonelli",
+          "Ricciardo",
+          "Hazik",
+          "Leclerc",
+          "Russell",
+          "Hamilton",
+          "Gasly",
+          "Piastri",
+          "Alonso"
+        ]
+      },
+      {
+        "round": 9,
+        "gp": "Italian GP",
+        "location": "Monza",
+        "top10": [
+          "Verstappen",
+          "Antonelli",
+          "Hamilton",
+          "Ricciardo",
+          "Russell",
+          "Hazik",
+          "Leclerc",
+          "Gasly",
+          "Alonso",
+          "Piastri"
+        ]
+      },
+      {
+        "round": 10,
+        "gp": "Singapore GP (Night II)",
+        "location": "Singapore",
+        "top10": [
+          "Verstappen",
+          "Ricciardo",
+          "Antonelli",
+          "Hamilton",
+          "Hazik",
+          "Russell",
+          "Leclerc",
+          "Alonso",
+          "Gasly",
+          "Piastri"
+        ]
+      },
+      {
+        "round": 11,
+        "gp": "Brazilian GP",
+        "location": "Interlagos",
+        "top10": [
+          "Verstappen",
+          "Ricciardo",
+          "Antonelli",
+          "Hamilton",
+          "Gasly",
+          "Tsunoda",
+          "Hazik",
+          "Russell",
+          "Alonso",
+          "Leclerc"
+        ]
+      },
+      {
+        "round": 12,
+        "gp": "Belgian GP",
+        "location": "Spa-Francorchamps",
+        "top10": [
+          "Verstappen",
+          "Antonelli",
+          "Ricciardo",
+          "Hamilton",
+          "Hazik",
+          "Russell",
+          "Leclerc",
+          "Gasly",
+          "Tsunoda",
+          "Alonso"
+        ]
+      }
+    ]
+  },
+  "Rumour_Mill": [
+    {
+      "driver": "Lando Norris",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 20,
+      "note": "co\u2011alpha target"
+    },
+    {
+      "driver": "Charles Leclerc",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 15,
+      "note": "quali god"
+    },
+    {
+      "driver": "Kimi Antonelli",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 10,
+      "note": "post\u2011Lewis era plan"
+    },
+    {
+      "driver": "Oscar Piastri",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 15,
+      "note": "calm assassin"
+    },
+    {
+      "driver": "George Russell",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 10,
+      "note": "politics tax applies"
+    },
+    {
+      "driver": "Carlos Sainz",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 30,
+      "note": "bridge signing 12\u201318 mo"
+    },
+    {
+      "driver": "Pierre Gasly",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 25,
+      "note": "safe #2 next to Max"
+    },
+    {
+      "driver": "Yuki Tsunoda",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 15,
+      "note": "JP market + aggression"
+    },
+    {
+      "driver": "Daniel Ricciardo",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 25,
+      "note": "PR cushion"
+    },
+    {
+      "driver": "Alex Albon",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 20,
+      "note": "over\u2011delivers in midfield"
+    },
+    {
+      "driver": "Liam Lawson",
+      "linked_team": "ExxonMobil",
+      "chance_pct": 35,
+      "note": "stop\u2011gap ready"
+    }
+  ],
+  "Engineer_Transfer_Engine": {
+    "enabled": true,
+    "hooks": {
+      "on_preseason": true,
+      "on_rounds": [
+        9,
+        15
+      ]
+    },
+    "rules": {
+      "poach_probability_base": 0.08,
+      "poach_bonus_if_constructor_rank_le": {
+        "rank": 3,
+        "bonus": 0.06
+      },
+      "poach_bonus_if_driver_champion": 0.05,
+      "poach_penalty_if_budget_freeze": 0.05,
+      "loyalty_decay_if_morale_lt": {
+        "morale": 60,
+        "delta": 0.05
+      },
+      "loyalty_boost_if_synergy_ge": {
+        "synergy": 9,
+        "delta": 0.08
+      },
+      "cooldown_rounds": 6,
+      "max_moves_per_window": 3
+    },
+    "replacement_generation": {
+      "method": "weighted_pool_or_generate",
+      "generate_baseline": {
+        "Strategy_IQ": [
+          6,
+          9
+        ],
+        "Tyre_Management": [
+          6,
+          9
+        ],
+        "Pressure": [
+          6,
+          9
+        ],
+        "Synergy": [
+          5,
+          8
+        ],
+        "Innovation": [
+          6,
+          9
+        ]
+      },
+      "name_bank": [
+        "Matteo Bianchi",
+        "Sophie Lee",
+        "Kenji Morita",
+        "Lars Vahl",
+        "Ana Rodr\u00edguez",
+        "Noah Grant",
+        "Marta Ilyin",
+        "Zhang Kai"
+      ]
+    },
+    "logging": true,
+    "rumour_integration": true
+  },
+  "Engineer_Pool": [
+    {
+      "name": "Sophie Lee",
+      "Strategy_IQ": 6,
+      "Tyre_Management": 6,
+      "Pressure": 6,
+      "Synergy": 6,
+      "Innovation": 6
+    },
+    {
+      "name": "Kenji Morita",
+      "Strategy_IQ": 7,
+      "Tyre_Management": 7,
+      "Pressure": 7,
+      "Synergy": 6,
+      "Innovation": 8
+    },
+    {
+      "name": "Lars Vahl",
+      "Strategy_IQ": 8,
+      "Tyre_Management": 7,
+      "Pressure": 8,
+      "Synergy": 7,
+      "Innovation": 7
+    },
+    {
+      "name": "Ana Rodr\u00edguez",
+      "Strategy_IQ": 8,
+      "Tyre_Management": 8,
+      "Pressure": 7,
+      "Synergy": 7,
+      "Innovation": 9
+    },
+    {
+      "name": "Noah Grant",
+      "Strategy_IQ": 7,
+      "Tyre_Management": 8,
+      "Pressure": 6,
+      "Synergy": 7,
+      "Innovation": 8
+    },
+    {
+      "name": "Marta Ilyin",
+      "Strategy_IQ": 9,
+      "Tyre_Management": 8,
+      "Pressure": 8,
+      "Synergy": 8,
+      "Innovation": 8
+    },
+    {
+      "name": "Zhang Kai",
+      "Strategy_IQ": 7,
+      "Tyre_Management": 7,
+      "Pressure": 7,
+      "Synergy": 7,
+      "Innovation": 7
+    }
+  ]
+}
