@@ -16,7 +16,7 @@
   </head>
   <body>
     <header class="topbar">
-      <div class="logo">DS<span>AI</span></div>
+      <div class="logo">F1<span>Chaos</span></div>
       <button id="clear" title="Clear chat">Clear</button>
     </header>
     <main id="chat"></main>
@@ -32,4 +32,25 @@
     </template>
     <script src="/app.js" defer></script>
   </body>
+
+  <!-- Game State Controls -->
+<div class="row" style="gap:8px; margin:12px 0;">
+  <button id="btn-load-default">Load Seed JSON</button>
+  <input id="file-import" type="file" accept="application/json" style="display:none" />
+  <button id="btn-import">Import JSON</button>
+  <button id="btn-export">Export JSON</button>
+  <button id="btn-save-local">Save (Local)</button>
+  <button id="btn-clear-local">Clear Local Save</button>
+  <!-- Optional cloud later -->
+  <!-- <button id="btn-save-cloud">Save (Cloud)</button>
+  <button id="btn-load-cloud">Load (Cloud)</button> -->
+</div>
+
+<!-- Optional: quick view -->
+<details>
+  <summary>Current Game Snapshot</summary>
+  <pre id="game-preview" style="max-height:240px; overflow:auto; background:#111; color:#0f0; padding:8px;"></pre>
+</details>
+
+  
 </html>
