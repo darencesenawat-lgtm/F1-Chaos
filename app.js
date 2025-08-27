@@ -57,7 +57,20 @@ async function send() {
   history.push(msg);
   addMessage('user', text, msg.time);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+const textLC = text.toLowerCase();
 
+  function listDrivers() {
+    if (!GAME || !Array.isArray(GAME.drivers)) return "No drivers in GameState.";
+    return GAME.drivers.map(d => `- ${d.name || d.id} ${d.team ? `(${d.team})` : ''}`).join('\n');
+  }
+
+  if (/^driver(s)? list$/.test(textLC) || /^list driver(s)?$/.test(textLC)) {
+    const reply = listDrivers();
+    addMessage('assistant', reply, now());
+    history.push({ role:'assistant', content: reply, time: now() });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    return; // ⬅️ stop here, don't call API
+  }
   addMessage('assistant', 'Thinking…', now());
   const thinkingEl = chatEl.lastElementChild.querySelector('.content');
   thinkingEl.classList.add('thinking');
