@@ -10,12 +10,30 @@ let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
 function now() { return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
 
 function addMessage(role, content, time = now()) {
-  const node = tpl.content.firstElementChild.cloneNode(true);
+  const chat = document.getElementById('chat');
+  if (!chat) return console.warn('#chat not found');
+
+  const tpl = document.getElementById('bubble'); // expects <template id="bubble">
+  let node;
+  if (tpl && tpl.content && tpl.content.firstElementChild) {
+    node = tpl.content.firstElementChild.cloneNode(true);
+  } else {
+    node = document.createElement('div');
+    node.className = 'balloon';
+    node.innerHTML = `
+      <div class="content"></div>
+      <span class="time"></span>
+    `;
+  }
+
   node.classList.toggle('user', role === 'user');
   node.querySelector('.content').textContent = content;
-  node.querySelector('.balloon').insertAdjacentHTML('beforeend', `<span class="time">${time}</span>`);
-  chatEl.appendChild(node);
-  chatEl.scrollTop = chatEl.scrollHeight;
+  const timeEl = node.querySelector('.time');
+  if (timeEl) timeEl.textContent = time;
+  chat.appendChild(node);
+  chat.scrollTop = chat.scrollHeight;
+}
+
 }
 
 function restore() {
