@@ -38,6 +38,16 @@ function restore() {
   if (history.length === 0) { addMessage('assistant', 'Hi! I am DS AI. Ask me anything.'); return; }
   history.forEach(m => addMessage(m.role, m.content, m.time));
 }
+function systemGameContext() {
+  return {
+    role: 'system',
+    content: `You are F1 Management Simulator. Cynical, meme vibe. Keep rumours simple.
+Read GameState(JSON) and answer user queries about drivers/teams/finance without asking what they mean.
+
+GameState(JSON):
+${JSON.stringify(GAME).slice(0, 12000)}`
+  };
+}
 
 async function send() {
   const text = inputEl.value.trim();
@@ -58,8 +68,9 @@ async function send() {
   headers: { 'Content-Type':'application/json' },
   body: JSON.stringify({
     messages: [
-      { role:'system', content:'You are ChatGPT, a helpful and concise assistant.'},
-      ...history.map(({role, content}) => ({role, content}))
+        systemGameContext(),
+        { role:'system', content:'Reply concisely in bullet points when listing drivers/teams.'},
+        ...history.map(({role, content}) => ({role, content}))
     ]
   })
 });
