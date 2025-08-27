@@ -2,7 +2,7 @@ const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('send');
 const clearBtn = document.getElementById('clear');
-const tpl = document.getElementById('bubble');
+
 
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
@@ -34,7 +34,7 @@ function addMessage(role, content, time = now()) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-}
+
 
 function restore() {
   if (history.length === 0) { addMessage('assistant', 'Hi! I am DS AI. Ask me anything.'); return; }
