@@ -210,3 +210,62 @@ function toast(msg) {
   // Optional: integrate with your UI; for now console is enough.
 }
 
+// 1) Re-use the same announcer used for seed loads
+function announce(msg) {
+  const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  addMessage('assistant', msg, time);
+  history.push({ role:'assistant', content: msg, time });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
+
+// 2) After setting GAME, also autosave (optional but nice)
+function setGame(obj) {
+  GAME = obj || {};
+  renderPreview();
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify(GAME)); // autosave current state
+  } catch {}
+}
+
+// 3) Seed loader → already announces after load
+async function loadSeed() {
+  const res = await fetch(SEED_URL, { cache: 'no-store' });
+  if (!res.ok) throw new Error('Seed JSON not found: ' + SEED_URL);
+  const data = await res.json();
+  setGame(data);
+  announce('✅ Seed loaded successfully! The grid is ready — time to play.');
+}
+
+// 4) Import handler → announce + filename
+elImport?.addEventListener('change', async (ev) => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  try {
+    const text = await file.text();
+    const obj = JSON.parse(text);
+    setGame(obj);
+    announce(`✅ Save loaded: ${file.name}. Parc fermé complete — resume chaos.`);
+
+    // 🎙️ Extra sprinkle: random rumour after import (5% chance)
+    if (Math.random() < 0.05) {
+      const rumours = [
+        "🔮 Rumour: FIA might drop a surprise TD before next race.",
+        "📉 Whisper: one team is over budget… penalties incoming?",
+        "👀 Paddock says a TP is about to be sacked.",
+        "🍕 Engineers spotted ordering pineapple pizza — morale crisis?",
+        "🕵️ Sources claim a driver’s secretly testing for another team."
+      ];
+      const pick = rumours[Math.floor(Math.random() * rumours.length)];
+      announce(pick);
+    }
+
+  } catch (e) {
+    console.error(e);
+    announce('❌ That file is not valid JSON. Bring it back to the garage.');
+  } finally {
+    ev.target.value = '';
+  }
+});
+
+});
+
