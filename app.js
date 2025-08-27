@@ -34,8 +34,6 @@ function addMessage(role, content, time = now()) {
   chat.scrollTop = chat.scrollHeight;
 }
 
-
-
 function restore() {
   if (history.length === 0) { addMessage('assistant', 'Hi! I am DS AI. Ask me anything.'); return; }
   history.forEach(m => addMessage(m.role, m.content, m.time));
