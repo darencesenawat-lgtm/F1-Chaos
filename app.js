@@ -86,15 +86,11 @@ sendBtn.addEventListener('click', send);
 inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
 clearBtn.addEventListener('click', () => { history = []; localStorage.removeItem(STORAGE_KEY); chatEl.innerHTML = ''; restore(); });
 restore();
-
-// ===== Game State =====
+// ----- Game State -----
 const LS_KEY = 'f1-chaos-game-v1';
 let GAME = null;
-
-// Default seed URL (put a real file in your repo, see section 3)
 const SEED_URL = '/data/ccsf_master.json';
 
-// UI refs
 const elPreview = document.getElementById('game-preview');
 const elImport = document.getElementById('file-import');
 const btnLoadDefault = document.getElementById('btn-load-default');
@@ -102,26 +98,17 @@ const btnImport = document.getElementById('btn-import');
 const btnExport = document.getElementById('btn-export');
 const btnSaveLocal = document.getElementById('btn-save-local');
 const btnClearLocal = document.getElementById('btn-clear-local');
-// const btnSaveCloud = document.getElementById('btn-save-cloud');
-// const btnLoadCloud = document.getElementById('btn-load-cloud');
 
-// Boot: try restore from local first
-restoreLocal();
-
-// ----- Core -----
 function setGame(obj) {
   GAME = obj || {};
-  // TODO: rerender any UI that depends on GAME, e.g. teams/drivers
   renderPreview();
+  try { localStorage.setItem(LS_KEY, JSON.stringify(GAME)); } catch {}
 }
 
 function renderPreview() {
   if (!elPreview) return;
-  try {
-    elPreview.textContent = JSON.stringify(GAME, null, 2);
-  } catch {
-    elPreview.textContent = '<< invalid game >>';
-  }
+  try { elPreview.textContent = JSON.stringify(GAME, null, 2); }
+  catch { elPreview.textContent = '<< invalid game >>'; }
 }
 
 function restoreLocal() {
@@ -132,20 +119,13 @@ function restoreLocal() {
       console.info('[GAME] Restored from localStorage');
       return;
     }
-  } catch (e) {
-    console.warn('[GAME] local restore failed', e);
-  }
+  } catch (e) { console.warn('[GAME] local restore failed', e); }
   setGame({ note: 'Empty state. Load seed or import your JSON.' });
 }
 
 function saveLocal() {
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(GAME));
-    toast('Saved locally ✅');
-  } catch (e) {
-    console.error(e);
-    toast('Failed to save locally ❌');
-  }
+  try { localStorage.setItem(LS_KEY, JSON.stringify(GAME)); toast('Saved locally ✅'); }
+  catch (e) { console.error(e); toast('Failed to save locally ❌'); }
 }
 
 function clearLocal() {
@@ -153,99 +133,6 @@ function clearLocal() {
   toast('Local save cleared 🧹');
 }
 
-// Seed loader (read-only file from repo)
-async function loadSeed() {
-  const res = await fetch(SEED_URL, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Seed JSON not found: ' + SEED_URL);
-  const data = await res.json();
-  setGame(data);
-  toast('Seed loaded 📦');
-}
-
-// Import from file chooser
-function importFileDialog() {
-  elImport.click();
-}
-
-elImport?.addEventListener('change', async (ev) => {
-  const file = ev.target.files?.[0];
-  if (!file) return;
-  try {
-    const text = await file.text();
-    const obj = JSON.parse(text);
-    setGame(obj);
-    toast(`Imported ${file.name} ✅`);
-  } catch (e) {
-    console.error(e);
-    toast('Invalid JSON file ❌');
-  } finally {
-    ev.target.value = '';
-  }
-});
-
-// Export current state
-function exportJSON() {
-  try {
-    const blob = new Blob([JSON.stringify(GAME, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const filename = `f1-chaos-save-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
-    a.href = url; a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-    toast('Exported 💾');
-  } catch (e) {
-    console.error(e);
-    toast('Export failed ❌');
-  }
-}
-
-// Optional: send GAME to LLM as context
-function systemGameContext() {
-  return {
-    role: 'system',
-    content: `You are F1 Management Simulator. Cynical, meme vibe. Keep rumours simple.
-GameState(JSON): ${JSON.stringify(GAME).slice(0, 12000)}`
-  };
-}
-
-// Example: use in your existing ask/LLM call:
-// messages = [systemGameContext(), ...messages];
-
-// ----- Wire buttons -----
-btnLoadDefault?.addEventListener('click', () => loadSeed().catch(e => toast(e.message)));
-btnImport?.addEventListener('click', importFileDialog);
-btnExport?.addEventListener('click', exportJSON);
-btnSaveLocal?.addEventListener('click', saveLocal);
-btnClearLocal?.addEventListener('click', clearLocal);
-
-// Tiny toast helper
-function toast(msg) {
-  console.log('[TOAST]', msg);
-  if (!('Notification' in window)) return;
-  // Optional: integrate with your UI; for now console is enough.
-}
-
-// 1) Re-use the same announcer used for seed loads
-function announce(msg) {
-  const time = new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-  addMessage('assistant', msg, time);
-  history.push({ role:'assistant', content: msg, time });
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-}
-
-// 2) After setting GAME, also autosave (optional but nice)
-function setGame(obj) {
-  GAME = obj || {};
-  renderPreview();
-  try {
-    localStorage.setItem(LS_KEY, JSON.stringify(GAME)); // autosave current state
-  } catch {}
-}
-
-// 3) Seed loader → already announces after load
 async function loadSeed() {
   const res = await fetch(SEED_URL, { cache: 'no-store' });
   if (!res.ok) throw new Error('Seed JSON not found: ' + SEED_URL);
@@ -254,7 +141,8 @@ async function loadSeed() {
   announce('✅ Seed loaded successfully! The grid is ready — time to play.');
 }
 
-// 4) Import handler → announce + filename
+function importFileDialog() { elImport?.click(); }
+
 elImport?.addEventListener('change', async (ev) => {
   const file = ev.target.files?.[0];
   if (!file) return;
@@ -264,7 +152,7 @@ elImport?.addEventListener('change', async (ev) => {
     setGame(obj);
     announce(`✅ Save loaded: ${file.name}. Parc fermé complete — resume chaos.`);
 
-    // 🎙️ Extra sprinkle: random rumour after import (5% chance)
+    // Rumour 5%
     if (Math.random() < 0.05) {
       const rumours = [
         "🔮 Rumour: FIA might drop a surprise TD before next race.",
@@ -273,10 +161,8 @@ elImport?.addEventListener('change', async (ev) => {
         "🍕 Engineers spotted ordering pineapple pizza — morale crisis?",
         "🕵️ Sources claim a driver’s secretly testing for another team."
       ];
-      const pick = rumours[Math.floor(Math.random() * rumours.length)];
-      announce(pick);
+      announce(rumours[Math.floor(Math.random() * rumours.length)]);
     }
-
   } catch (e) {
     console.error(e);
     announce('❌ That file is not valid JSON. Bring it back to the garage.');
@@ -285,5 +171,37 @@ elImport?.addEventListener('change', async (ev) => {
   }
 });
 
-});
+function exportJSON() {
+  try {
+    const blob = new Blob([JSON.stringify(GAME, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const filename = `f1-chaos-save-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.json`;
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast('Exported 💾');
+  } catch (e) { console.error(e); toast('Export failed ❌'); }
+}
 
+function announce(msg) {
+  const time = now();
+  addMessage('assistant', msg, time);
+  history.push({ role:'assistant', content: msg, time });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+}
+
+function toast(msg) {
+  console.log('[TOAST]', msg);
+  // Optionally wire a visual toast UI here
+}
+
+// Wire buttons (single set)
+btnLoadDefault?.addEventListener('click', () => loadSeed().catch(e => toast(e.message)));
+btnImport?.addEventListener('click', importFileDialog);
+btnExport?.addEventListener('click', exportJSON);
+btnSaveLocal?.addEventListener('click', saveLocal);
+btnClearLocal?.addEventListener('click', clearLocal);
+
+// Boot
+restoreLocal();
