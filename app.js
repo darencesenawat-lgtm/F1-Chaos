@@ -1,11 +1,11 @@
-// app.js — module-safe boot + UI wiring (chat + buttons)
-// Make sure index.html loads this with: <script type="module" src="app.js"></script>
+// app.js — old Chat UI + API restored, plus hybrid game loader + buttons
+// Make sure index.html uses: <script type="module" src="app.js"></script>
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
 let game = null;
 
-// ---------- safe announce fallback (in case your old ui.js isn't global) ----------
+// ---------- announce fallback ----------
 if (typeof window.announce !== 'function') {
   window.announce = (msg) => {
     console.log('[ANNOUNCE]', msg);
@@ -18,97 +18,108 @@ if (typeof window.announce !== 'function') {
     }
     t.textContent = msg;
     t.style.display = 'block';
-    setTimeout(() => (t.style.display = 'none'), 2500);
+    setTimeout(() => (t.style.display = 'none'), 2200);
   };
 }
 
-// ---------- state hook you can customize ----------
-function setGame(newGame) {
-  game = newGame;
-  // TODO: refresh your UI here from game.state (tables, cards, etc.)
-  console.info('Game state set:', game);
+// ---------- local save helpers ----------
+function saveLocal(state) {
+  try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {}
+}
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem('ccsf_state');
+    if (!raw) return null;
+    const state = JSON.parse(raw);
+    if (!state?.meta?.season) return null;
+    return state;
+  } catch { return null; }
+}
+function setGame(newGame) { game = newGame; }
+
+// ========== CHAT (restored from your old app.js) ==========
+const STORAGE_KEY = 'pwa-chatgpt-history-v1';
+let chatEl, inputEl, sendBtn, clearBtn, tpl;
+let history = [];
+
+function now() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
+
+function addMessage(role, content, time = now()) {
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  node.classList.toggle('user', role === 'user');
+  node.querySelector('.content').textContent = content;
+  node.querySelector('.balloon').insertAdjacentHTML('beforeend', `<span class="time">${time}</span>`);
+  chatEl.appendChild(node);
+  chatEl.scrollTop = chatEl.scrollHeight;
 }
 
-// ---------- Chat UI: create if missing + module-safe wiring ----------
-function mountChat() {
-  let chatBox  = document.getElementById('chat-box')  || document.querySelector('.chat-box');
-  let chatForm = document.getElementById('chat-form');
-  let chatInput = document.getElementById('chat-input') || document.querySelector('input[name="chat"]');
-  let chatSend  = document.getElementById('chat-send')  || document.querySelector('[data-action="send"]');
+function restoreChat() {
+  history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  if (history.length === 0) { addMessage('assistant', 'Hi! I am DS AI. Ask me anything.'); return; }
+  history.forEach(m => addMessage(m.role, m.content, m.time));
+}
 
-  if (!chatBox) {
-    chatBox = document.createElement('div');
-    chatBox.id = 'chat-box';
-    chatBox.style.cssText = 'position:fixed;right:16px;bottom:96px;width:340px;max-height:45vh;overflow:auto;background:#111;color:#eee;padding:10px;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.4);z-index:9998;font:14px/1.35 system-ui';
-    document.body.appendChild(chatBox);
+async function send() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = '';
+
+  const msg = { role: 'user', content: text, time: now() };
+  history.push(msg);
+  addMessage('user', text, msg.time);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+
+  addMessage('assistant', 'Thinking…', now());
+  const thinkingEl = chatEl.lastElementChild.querySelector('.content');
+  thinkingEl.classList.add('thinking');
+
+  try {
+    const res = await fetch('api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role:'system', content:'You are ChatGPT, a helpful and concise assistant.'},
+          ...history.map(({role, content}) => ({role, content}))
+        ]
+      })
+    });
+    const data = await res.json();
+    const reply = data.reply;
+
+    thinkingEl.classList.remove('thinking');
+    if (data.error) {
+      thinkingEl.textContent = 'Error: ' + data.error;
+    } else {
+      thinkingEl.textContent = reply || 'No reply.';
+      history.push({ role:'assistant', content: reply || 'No reply.', time: now() });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+    }
+  } catch (err) {
+    thinkingEl.classList.remove('thinking');
+    thinkingEl.textContent = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
   }
-
-  if (!chatForm) {
-    chatForm = document.createElement('form');
-    chatForm.id = 'chat-form';
-    chatForm.style.cssText = 'position:fixed;right:16px;bottom:16px;width:340px;display:flex;gap:8px;z-index:9999';
-    chatForm.innerHTML = `
-      <input id="chat-input" placeholder="type here…" autocomplete="off"
-             style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #333;background:#181818;color:#eee;">
-      <button id="chat-send" type="submit"
-              style="padding:10px 12px;border-radius:8px;border:0;background:#ff6b00;color:#fff;font-weight:600">Send</button>
-    `;
-    document.body.appendChild(chatForm);
-    chatInput = chatForm.querySelector('#chat-input');
-    chatSend  = chatForm.querySelector('#chat-send');
-  }
-
-  const appendChat = (author, text) => {
-    const row = document.createElement('div');
-    row.style.margin = '6px 0';
-    row.innerHTML = `<b>${author}:</b> ${text}`;
-    chatBox.appendChild(row);
-    chatBox.scrollTop = chatBox.scrollHeight;
-  };
-
-  const doSend = (e) => {
-    if (e) e.preventDefault();
-    const text = (chatInput?.value || '').trim();
-    if (!text) return;
-    appendChat('You', text);
-    // TODO: route this to your real handler (AI/commands/etc.)
-    chatInput.value = '';
-  };
-
-  // Bind safely
-  chatForm.addEventListener('submit', doSend);
-  if (chatSend) chatSend.addEventListener('click', doSend);
-  if (chatInput) chatInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) doSend(e);
-  });
-
-  // Keep old inline handlers alive if your HTML still calls send()
-  window.send = doSend;
-  window.handleSend = doSend;
-  window.appendChat = appendChat;
 }
 
-// ---------- Buttons (your IDs) ----------
+// ========== BUTTONS (your existing IDs) ==========
 function wireButtons() {
   const byId = (id) => document.getElementById(id);
 
-  // Load Seed JSON (force read from modular seed/)
   const btnLoadDefault = byId('btn-load-default');
   if (btnLoadDefault) {
     btnLoadDefault.addEventListener('click', async () => {
       try {
-        const res = await loadGame({ modularBase: 'seed/' }); // relative path
+        const res = await loadGame({ modularBase: 'seed/' }); // relative paths
         setGame(res);
         announce('🌱 Fresh seed loaded from seed/.');
-        localStorage.setItem('ccsf_state', JSON.stringify(game.state));
+        saveLocal(game.state);
       } catch (e) {
         console.error(e);
-        announce('⚠️ Could not load seed/. Check seed/manifest.json exists and paths.');
+        announce('⚠️ Could not load seed/. Check seed/manifest.json.');
       }
     });
   }
 
-  // Import JSON (single-file bundle)
   const btnImport = byId('btn-import');
   const fileImport = byId('file-import');
   if (btnImport && fileImport) {
@@ -120,17 +131,14 @@ function wireButtons() {
         const res = await loadGame({ bundleUrl: f });
         setGame(res);
         announce('📦 Save imported.');
-        localStorage.setItem('ccsf_state', JSON.stringify(game.state));
+        saveLocal(game.state);
       } catch (err) {
         console.error(err);
         announce('❌ Invalid or corrupted save file.');
-      } finally {
-        e.target.value = ''; // reset
-      }
+      } finally { e.target.value = ''; }
     });
   }
 
-  // Export JSON (one-file .ccsf.json)
   const btnExport = byId('btn-export');
   if (btnExport) {
     btnExport.addEventListener('click', () => {
@@ -140,17 +148,15 @@ function wireButtons() {
     });
   }
 
-  // Save (Local)
   const btnSaveLocal = byId('btn-save-local');
   if (btnSaveLocal) {
     btnSaveLocal.addEventListener('click', () => {
       if (!game?.state) return announce('😵 No game state to save.');
-      localStorage.setItem('ccsf_state', JSON.stringify(game.state));
+      saveLocal(game.state);
       announce('📍 Save written to localStorage.');
     });
   }
 
-  // Clear Local Save
   const btnClearLocal = byId('btn-clear-local');
   if (btnClearLocal) {
     btnClearLocal.addEventListener('click', () => {
@@ -160,46 +166,43 @@ function wireButtons() {
   }
 }
 
-// ---------- Local storage helpers ----------
-function loadLocal() {
-  try {
-    const raw = localStorage.getItem('ccsf_state');
-    if (!raw) return null;
-    const state = JSON.parse(raw);
-    if (!state?.meta?.season || !state?.meta?.timeline) return null;
-    return state;
-  } catch { return null; }
-}
-
-// ---------- Boot flow ----------
+// ========== BOOT ==========
 window.addEventListener('DOMContentLoaded', async () => {
+  // 1) chat DOM refs (same IDs as your old file)
+  chatEl   = document.getElementById('chat');
+  inputEl  = document.getElementById('input');
+  sendBtn  = document.getElementById('send');
+  clearBtn = document.getElementById('clear');
+  tpl      = document.getElementById('bubble');
+
+  // 2) wire chat
+  if (sendBtn) sendBtn.addEventListener('click', send);
+  if (inputEl) inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  if (clearBtn) clearBtn.addEventListener('click', () => { history = []; localStorage.removeItem(STORAGE_KEY); chatEl.innerHTML = ''; restoreChat(); });
+  restoreChat();
+
+  // 3) wire top control buttons
+  wireButtons();
+
+  // 4) boot game state (local → bundle → seed)
+  const cached = loadLocal();
+  if (cached) {
+    setGame({
+      manifest: { version: '2025.0.1', season: cached.meta.season || 2025, timeline: cached.meta.timeline || 'preseason' },
+      state: cached
+    });
+    announce('♻️ Resumed from local save.');
+    return;
+  }
+
   try {
-    announce('⏳ Booting paddock…');
-
-    // Chat & buttons first so UI is alive even if data fetch fails
-    mountChat();
-    wireButtons();
-
-    // Resume from local if available
-    const cached = loadLocal();
-    if (cached) {
-      setGame({
-        manifest: { version: '2025.0.1', season: cached.meta.season || 2025, timeline: cached.meta.timeline || 'preseason' },
-        state: cached
-      });
-      announce('♻️ Resumed from local save.');
-      return;
-    }
-
-    // Try player bundle; else modular seed (relative paths so GH Pages is happy)
     const res = await bootGame({ defaultBundle: 'saves/slot1.ccsf.json', modularBase: 'seed/' });
     setGame(res);
     announce('✅ Seed loaded successfully! The grid is ready — time to play.');
-
-    // First boot → also cache in localStorage
-    localStorage.setItem('ccsf_state', JSON.stringify(game.state));
+    saveLocal(game.state);
   } catch (err) {
     console.error('BOOT ERROR:', err);
-    announce('💥 Boot failed. Likely causes: missing seed/manifest.json or wrong script type.');
+    // As a fallback (don’t block chat even if seed fails)
+    announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
   }
 });
