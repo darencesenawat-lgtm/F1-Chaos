@@ -1,0 +1,18 @@
+{
+  "version": "2025.0.1",
+  "season": 2025,
+  "timeline": "preseason",
+  "files": [
+    "metadata.json",
+    "regulations.json",
+    "sponsors.json",
+    "teams.json",
+    "drivers.json",
+    "principals.json",
+    "engineers.json",
+    "calendar.json",
+    "development.json",
+    "rumours.json",
+    "stats.json"
+  ]
+}
