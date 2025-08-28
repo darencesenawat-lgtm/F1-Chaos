@@ -1,0 +1,7 @@
+{
+  "car": ["chassis","aero_efficiency","top_speed","cornering_grip","power_unit","reliability","tyre_wear","fuel_efficiency","drs_effect","upgrade_potential"],
+  "driver": ["pace","qualifying","racecraft","consistency","composure","aggression","adaptability","feedback","experience","marketability"],
+  "team_principal": ["leadership","political_influence","sponsor_relations","driver_management","strategic_acumen","media_handling","technical_understanding","crisis_management","ruthlessness","longevity"],
+  "race_engineer": ["communication","strategy_calls","stress_tolerance","tyre_knowledge","setup_knowledge","driver_chemistry","adaptability_rt","data_analysis","risk_appetite","pitwall_influence"],
+  "circuit": ["length_km","laps","overtake_difficulty","tyre_wear_level","engine_demand","aero_demand","weather_unpredictability","downforce_level","pit_loss_s","fan_value"]
+}
