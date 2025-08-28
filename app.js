@@ -3,6 +3,32 @@
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
+function getSeedContext() {
+  // prefer in-memory; fall back to localStorage if not yet booted
+  const s = (typeof game?.state !== 'undefined') ? game.state
+            : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
+  if (!s) return null;
+
+  const teams = (s.teams || []).map(t => ({
+    id: t.team_id, name: t.team_name, drivers: t.drivers
+  }));
+  const drivers = (s.drivers || []).map(d => ({
+    id: d.driver_id, name: d.name, team: d.team, rating: d.overall_rating
+  }));
+
+  // find the next race (or first)
+  const today = new Date();
+  const next = (s.calendar || []).find(c => new Date(c.date) >= today) || (s.calendar || [])[0] || null;
+
+  return {
+    season: s.meta?.season, timeline: s.meta?.timeline,
+    selected_team: s.meta?.selected_team || null,
+    teams, drivers,
+    next_race: next ? { round: next.round, name: next.name, date: next.date, country: next.country } : null
+  };
+}
+
+
 let game = null;
 
 // ---------- announce fallback ----------
