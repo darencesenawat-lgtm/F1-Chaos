@@ -1,3 +1,36 @@
+// app.js — new boot
+import { bootGame, exportBundle, loadGame } from './loader.js';
+
+let game; // global game handle for your UI
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // Try player save first; else load modular /seed/ and auto-init
+  game = await bootGame({ defaultBundle: '/saves/slot1.ccsf.json', modularBase: '/seed/' });
+
+  // Your UI kick-off here
+  announce('✅ Seed loaded successfully! The grid is ready — time to play.');
+
+  // Wire buttons (optional; add if you have these IDs)
+  const btnExport = document.getElementById('btnExport');
+  if (btnExport) btnExport.onclick = () => exportBundle(game.state);
+
+  const fileInput = document.getElementById('importFile'); // <input type="file" accept=".json">
+  const btnImport = document.getElementById('btnImport');
+  if (btnImport && fileInput) {
+    btnImport.onclick = () => fileInput.click();
+    fileInput.addEventListener('change', async (e) => {
+      const f = e.target.files?.[0];
+      if (!f) return;
+      // Import a single-file save the player picked
+      const res = await loadGame({ bundleUrl: f });
+      game = res;
+      announce('📦 Save imported. Back in the paddock.');
+      // TODO: refresh your UI from `game.state`
+    });
+  }
+});
+
+
 const chatEl = document.getElementById('chat');
 const inputEl = document.getElementById('input');
 const sendBtn = document.getElementById('send');
@@ -155,13 +188,7 @@ function clearLocal() {
   toast('Local save cleared 🧹');
 }
 
-async function loadSeed() {
-  const res = await fetch(SEED_URL, { cache: 'no-store' });
-  if (!res.ok) throw new Error('Seed JSON not found: ' + SEED_URL);
-  const data = await res.json();
-  setGame(data);
-  announce('✅ Seed loaded successfully! The grid is ready — time to play.');
-}
+
 
 function importFileDialog() { elImport?.click(); }
 
