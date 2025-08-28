@@ -1,0 +1,7 @@
+{
+  "budget_cap_usd": 135000000,
+  "aero_testing_limits": "ATR-2025",
+  "tyre_rules": "2025-spec",
+  "pu_allocations": { "ICE": 3, "TC": 3, "MGU-H": 3, "MGU-K": 3, "ES": 2, "CE": 2, "GBX": 4 },
+  "fia_hooks": { "fia_directives": [], "penalties": [], "rule_changes": [] }
+}
