@@ -1,0 +1,16 @@
+{
+  "wind_tunnel_tokens": {
+    "team_redbull_2025": 80,
+    "team_ferrari_2025": 90,
+    "team_mercedes_2025": 90,
+    "team_mclaren_2025": 100,
+    "team_astonmartin_2025": 95,
+    "team_williams_2025": 95,
+    "team_kicksauber_2025": 105,
+    "team_racingbulls_2025": 105,
+    "team_haas_2025": 105,
+    "team_alpine_2025": 100
+  },
+  "upgrade_paths": ["aero","engine","reliability"],
+  "preseason_testing_results": []
+}
