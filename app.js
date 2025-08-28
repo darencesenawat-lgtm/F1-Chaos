@@ -176,7 +176,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Try bundle, else modular seed
-    const res = await bootGame({ defaultBundle: '/saves/slot1.ccsf.json', modularBase: '/seed/' });
+    const res = await bootGame({ defaultBundle: 'saves/slot1.ccsf.json', modularBase: 'seed/' });
     setGame(res);
     announce('✅ Seed loaded successfully! The grid is ready — time to play.');
 
