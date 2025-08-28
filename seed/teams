@@ -1,0 +1,122 @@
+[
+  {
+    "team_id": "team_mclaren_2025",
+    "team_name": "McLaren",
+    "team_principal": "tp_stella_mclaren",
+    "ceo": "Zak Brown",
+    "engine_supplier": "Mercedes",
+    "drivers": ["drv_piastri_81","drv_norris_4"],
+    "race_engineers": ["re_stallard_mclaren","re_joseph_mclaren"],
+    "car": { "chassis": 78, "aero_efficiency": 80, "top_speed": 76, "cornering_grip": 82, "power_unit": 78, "reliability": 78, "tyre_wear": 77, "fuel_efficiency": 78, "drs_effect": 75, "upgrade_potential": 82 },
+    "sponsors": ["OKX","Google","Dell","Coca-Cola"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_ferrari_2025",
+    "team_name": "Ferrari",
+    "team_principal": "tp_vasseur_ferrari",
+    "ceo": "Benedetto Vigna",
+    "engine_supplier": "Ferrari",
+    "drivers": ["drv_leclerc_16","drv_hamilton_44"],
+    "race_engineers": ["re_bozzi_ferrari", null],
+    "car": { "chassis": 79, "aero_efficiency": 78, "top_speed": 79, "cornering_grip": 80, "power_unit": 82, "reliability": 78, "tyre_wear": 77, "fuel_efficiency": 77, "drs_effect": 76, "upgrade_potential": 80 },
+    "sponsors": ["Santander","Shell","Ray-Ban","Puma"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_mercedes_2025",
+    "team_name": "Mercedes",
+    "team_principal": "tp_wolff_mercedes",
+    "ceo": "Toto Wolff",
+    "engine_supplier": "Mercedes",
+    "drivers": ["drv_russell_63","drv_antonelli_7"],
+    "race_engineers": ["re_musconi_mercedes", null],
+    "car": { "chassis": 77, "aero_efficiency": 76, "top_speed": 78, "cornering_grip": 77, "power_unit": 80, "reliability": 79, "tyre_wear": 76, "fuel_efficiency": 78, "drs_effect": 75, "upgrade_potential": 81 },
+    "sponsors": ["Petronas","INEOS","Monster"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_redbull_2025",
+    "team_name": "Red Bull Racing",
+    "team_principal": "tp_horner_redbull",
+    "ceo": "Christian Horner",
+    "engine_supplier": "Honda RBPT",
+    "drivers": ["drv_verstappen_1","drv_tsunoda_22"],
+    "race_engineers": ["re_lambiase_redbull", null],
+    "car": { "chassis": 80, "aero_efficiency": 83, "top_speed": 79, "cornering_grip": 83, "power_unit": 81, "reliability": 80, "tyre_wear": 79, "fuel_efficiency": 79, "drs_effect": 80, "upgrade_potential": 81 },
+    "sponsors": ["Oracle","Bybit","TAG Heuer"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_williams_2025",
+    "team_name": "Williams",
+    "team_principal": "tp_vowles_williams",
+    "ceo": "Matthew Savage",
+    "engine_supplier": "Mercedes",
+    "drivers": ["drv_albon_23","drv_sainz_55"],
+    "race_engineers": [null, null],
+    "car": { "chassis": 72, "aero_efficiency": 71, "top_speed": 76, "cornering_grip": 70, "power_unit": 78, "reliability": 73, "tyre_wear": 71, "fuel_efficiency": 74, "drs_effect": 73, "upgrade_potential": 75 },
+    "sponsors": ["HP","Michelob ULTRA","Omnitude"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_astonmartin_2025",
+    "team_name": "Aston Martin",
+    "team_principal": "tp_cowell_astonmartin",
+    "ceo": "Andy Cowell",
+    "engine_supplier": "Mercedes",
+    "drivers": ["drv_stroll_18","drv_alonso_14"],
+    "race_engineers": [null, null],
+    "car": { "chassis": 75, "aero_efficiency": 74, "top_speed": 77, "cornering_grip": 74, "power_unit": 78, "reliability": 76, "tyre_wear": 74, "fuel_efficiency": 75, "drs_effect": 74, "upgrade_potential": 77 },
+    "sponsors": ["Aramco","Cognizant","Peroni 0.0%"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_kicksauber_2025",
+    "team_name": "Kick Sauber",
+    "team_principal": "tp_wheatley_sauber",
+    "ceo": "Andreas Seidl",
+    "engine_supplier": "Ferrari",
+    "drivers": ["drv_hulkenberg_27","drv_bortoleto_5"],
+    "race_engineers": [null, null],
+    "car": { "chassis": 70, "aero_efficiency": 70, "top_speed": 74, "cornering_grip": 69, "power_unit": 79, "reliability": 72, "tyre_wear": 70, "fuel_efficiency": 73, "drs_effect": 72, "upgrade_potential": 74 },
+    "sponsors": ["Stake/Kick","M88","Singha"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_racingbulls_2025",
+    "team_name": "Racing Bulls",
+    "team_principal": "tp_mekies_racingbulls",
+    "ceo": "Peter Bayer",
+    "engine_supplier": "Honda RBPT",
+    "drivers": ["drv_lawson_30","drv_hadjar_50"],
+    "race_engineers": [null, null],
+    "car": { "chassis": 71, "aero_efficiency": 72, "top_speed": 74, "cornering_grip": 71, "power_unit": 81, "reliability": 72, "tyre_wear": 71, "fuel_efficiency": 73, "drs_effect": 73, "upgrade_potential": 75 },
+    "sponsors": ["Visa","Cash App","Orlen"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_haas_2025",
+    "team_name": "Haas",
+    "team_principal": "tp_komatsu_haas",
+    "ceo": "Gene Haas",
+    "engine_supplier": "Ferrari",
+    "drivers": ["drv_ocon_31","drv_bearman_50"],
+    "race_engineers": [null, "re_muller_haas"],
+    "car": { "chassis": 70, "aero_efficiency": 69, "top_speed": 73, "cornering_grip": 69, "power_unit": 79, "reliability": 71, "tyre_wear": 70, "fuel_efficiency": 72, "drs_effect": 71, "upgrade_potential": 73 },
+    "sponsors": ["MoneyGram","Chipotle"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  },
+  {
+    "team_id": "team_alpine_2025",
+    "team_name": "Alpine",
+    "team_principal": "tp_oakes_alpine",
+    "ceo": "Bruno Famin",
+    "engine_supplier": "Renault",
+    "drivers": ["drv_gasly_10","drv_colapinto_43"],
+    "race_engineers": ["re_loos_alpine", null],
+    "car": { "chassis": 71, "aero_efficiency": 71, "top_speed": 73, "cornering_grip": 71, "power_unit": 76, "reliability": 72, "tyre_wear": 71, "fuel_efficiency": 72, "drs_effect": 71, "upgrade_potential": 74 },
+    "sponsors": ["BWT","MAPFRE","Castrol"],
+    "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
+  }
+]
