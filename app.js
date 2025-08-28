@@ -1,5 +1,5 @@
 // app.js — module-safe boot + UI wiring (chat + buttons)
-// Works with <script type="module" src="app.js"></script>
+// Make sure index.html loads this with: <script type="module" src="app.js"></script>
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
@@ -13,7 +13,7 @@ if (typeof window.announce !== 'function') {
     if (!t) {
       t = document.createElement('div');
       t.id = 'toast';
-      t.style.cssText = 'position:fixed;left:12px;bottom:12px;background:#222;color:#fff;padding:10px 12px;border-radius:8px;z-index:9999;max-width:60ch';
+      t.style.cssText = 'position:fixed;left:12px;bottom:12px;background:#222;color:#fff;padding:10px 12px;border-radius:8px;z-index:9999;max-width:60ch;font:14px/1.3 system-ui';
       document.body.appendChild(t);
     }
     t.textContent = msg;
@@ -25,77 +25,92 @@ if (typeof window.announce !== 'function') {
 // ---------- state hook you can customize ----------
 function setGame(newGame) {
   game = newGame;
-  // TODO: refresh your UI here from game.state (render lists/tables etc.)
-  // For now just log:
+  // TODO: refresh your UI here from game.state (tables, cards, etc.)
   console.info('Game state set:', game);
 }
 
-// ---------- Chat UI wiring (no globals needed) ----------
-function wireChatUI() {
-  // Try common IDs — adjust if yours differ
-  const chatForm   = document.getElementById('chat-form');
-  const chatInput  = document.getElementById('chat-input') || document.querySelector('input[name="chat"]');
-  const chatSend   = document.getElementById('chat-send')  || document.querySelector('[data-action="send"]');
+// ---------- Chat UI: create if missing + module-safe wiring ----------
+function mountChat() {
+  let chatBox  = document.getElementById('chat-box')  || document.querySelector('.chat-box');
+  let chatForm = document.getElementById('chat-form');
+  let chatInput = document.getElementById('chat-input') || document.querySelector('input[name="chat"]');
+  let chatSend  = document.getElementById('chat-send')  || document.querySelector('[data-action="send"]');
+
+  if (!chatBox) {
+    chatBox = document.createElement('div');
+    chatBox.id = 'chat-box';
+    chatBox.style.cssText = 'position:fixed;right:16px;bottom:96px;width:340px;max-height:45vh;overflow:auto;background:#111;color:#eee;padding:10px;border-radius:10px;box-shadow:0 6px 30px rgba(0,0,0,.4);z-index:9998;font:14px/1.35 system-ui';
+    document.body.appendChild(chatBox);
+  }
+
+  if (!chatForm) {
+    chatForm = document.createElement('form');
+    chatForm.id = 'chat-form';
+    chatForm.style.cssText = 'position:fixed;right:16px;bottom:16px;width:340px;display:flex;gap:8px;z-index:9999';
+    chatForm.innerHTML = `
+      <input id="chat-input" placeholder="type here…" autocomplete="off"
+             style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #333;background:#181818;color:#eee;">
+      <button id="chat-send" type="submit"
+              style="padding:10px 12px;border-radius:8px;border:0;background:#ff6b00;color:#fff;font-weight:600">Send</button>
+    `;
+    document.body.appendChild(chatForm);
+    chatInput = chatForm.querySelector('#chat-input');
+    chatSend  = chatForm.querySelector('#chat-send');
+  }
+
+  const appendChat = (author, text) => {
+    const row = document.createElement('div');
+    row.style.margin = '6px 0';
+    row.innerHTML = `<b>${author}:</b> ${text}`;
+    chatBox.appendChild(row);
+    chatBox.scrollTop = chatBox.scrollHeight;
+  };
 
   const doSend = (e) => {
     if (e) e.preventDefault();
     const text = (chatInput?.value || '').trim();
     if (!text) return;
-    // Your existing handler can go here. For now, just echo.
     appendChat('You', text);
+    // TODO: route this to your real handler (AI/commands/etc.)
     chatInput.value = '';
   };
 
-  // If your HTML uses inline handlers like onclick="send()", keep it happy:
-  window.handleSend = doSend; // expose a global shim just in case
-
-  if (chatForm) chatForm.addEventListener('submit', doSend);
+  // Bind safely
+  chatForm.addEventListener('submit', doSend);
   if (chatSend) chatSend.addEventListener('click', doSend);
   if (chatInput) chatInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) doSend(e);
   });
-}
 
-function appendChat(author, text) {
-  let box = document.getElementById('chat-box') || document.querySelector('.chat-box');
-  if (!box) {
-    // minimal fallback
-    box = document.createElement('div');
-    box.id = 'chat-box';
-    box.style.cssText = 'position:fixed;right:12px;bottom:60px;width:320px;max-height:50vh;overflow:auto;background:#111;color:#eee;padding:10px;border-radius:10px';
-    document.body.appendChild(box);
-  }
-  const row = document.createElement('div');
-  row.style.margin = '6px 0';
-  row.innerHTML = `<b>${author}:</b> ${text}`;
-  box.appendChild(row);
-  box.scrollTop = box.scrollHeight;
+  // Keep old inline handlers alive if your HTML still calls send()
+  window.send = doSend;
+  window.handleSend = doSend;
+  window.appendChat = appendChat;
 }
 
 // ---------- Buttons (your IDs) ----------
 function wireButtons() {
   const byId = (id) => document.getElementById(id);
 
-  // Load Seed JSON (force read from /seed/manifest.json)
+  // Load Seed JSON (force read from modular seed/)
   const btnLoadDefault = byId('btn-load-default');
   if (btnLoadDefault) {
     btnLoadDefault.addEventListener('click', async () => {
       try {
-        const res = await loadGame({ modularBase: '/seed/' });
+        const res = await loadGame({ modularBase: 'seed/' }); // relative path
         setGame(res);
-        announce('🌱 Fresh seed loaded from /seed/.');
-        // optional: sync to local
+        announce('🌱 Fresh seed loaded from seed/.');
         localStorage.setItem('ccsf_state', JSON.stringify(game.state));
       } catch (e) {
         console.error(e);
-        announce('⚠️ Could not load /seed/. Check that /seed/manifest.json exists and paths are correct.');
+        announce('⚠️ Could not load seed/. Check seed/manifest.json exists and paths.');
       }
     });
   }
 
-  // Import JSON (single file)
+  // Import JSON (single-file bundle)
   const btnImport = byId('btn-import');
-  const fileImport = byId('file-import'); // <input type=file>
+  const fileImport = byId('file-import');
   if (btnImport && fileImport) {
     btnImport.addEventListener('click', () => fileImport.click());
     fileImport.addEventListener('change', async (e) => {
@@ -110,12 +125,12 @@ function wireButtons() {
         console.error(err);
         announce('❌ Invalid or corrupted save file.');
       } finally {
-        e.target.value = '';
+        e.target.value = ''; // reset
       }
     });
   }
 
-  // Export JSON
+  // Export JSON (one-file .ccsf.json)
   const btnExport = byId('btn-export');
   if (btnExport) {
     btnExport.addEventListener('click', () => {
@@ -145,7 +160,7 @@ function wireButtons() {
   }
 }
 
-// ---------- Boot flow ----------
+// ---------- Local storage helpers ----------
 function loadLocal() {
   try {
     const raw = localStorage.getItem('ccsf_state');
@@ -156,12 +171,13 @@ function loadLocal() {
   } catch { return null; }
 }
 
+// ---------- Boot flow ----------
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     announce('⏳ Booting paddock…');
 
     // Chat & buttons first so UI is alive even if data fetch fails
-    wireChatUI();
+    mountChat();
     wireButtons();
 
     // Resume from local if available
@@ -175,15 +191,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    // Try bundle, else modular seed
+    // Try player bundle; else modular seed (relative paths so GH Pages is happy)
     const res = await bootGame({ defaultBundle: 'saves/slot1.ccsf.json', modularBase: 'seed/' });
     setGame(res);
     announce('✅ Seed loaded successfully! The grid is ready — time to play.');
 
-    // optional: write first boot to local too
+    // First boot → also cache in localStorage
     localStorage.setItem('ccsf_state', JSON.stringify(game.state));
   } catch (err) {
     console.error('BOOT ERROR:', err);
-    announce('💥 Boot failed. Likely causes: wrong <script> tag, missing /seed/manifest.json, or bad loader path.');
+    announce('💥 Boot failed. Likely causes: missing seed/manifest.json or wrong script type.');
   }
 });
