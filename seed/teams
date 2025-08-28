@@ -32,7 +32,7 @@
     "drivers": ["drv_russell_63","drv_antonelli_7"],
     "race_engineers": ["re_musconi_mercedes", null],
     "car": { "chassis": 77, "aero_efficiency": 76, "top_speed": 78, "cornering_grip": 77, "power_unit": 80, "reliability": 79, "tyre_wear": 76, "fuel_efficiency": 78, "drs_effect": 75, "upgrade_potential": 81 },
-    "sponsors": ["Petronas","INEOS","Monster"],
+    "sponsors": ["PETRONAS","INEOS","Monster"],
     "finance": { "balance_usd": 135000000, "budget_cap_remaining_usd": 0 }
   },
   {
