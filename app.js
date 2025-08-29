@@ -4,28 +4,94 @@
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
 function getSeedContext() {
-  // prefer in-memory; fall back to localStorage if not yet booted
+  // prefer live state; fall back to cached export
   const s = (typeof game?.state !== 'undefined') ? game.state
             : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
   if (!s) return null;
 
+  // compact maps to keep payload small but useful
   const teams = (s.teams || []).map(t => ({
-    id: t.team_id, name: t.team_name, drivers: t.drivers
-  }));
-  const drivers = (s.drivers || []).map(d => ({
-    id: d.driver_id, name: d.name, team: d.team, rating: d.overall_rating
+    id: t.team_id,
+    name: t.team_name,
+    principal: t.team_principal,
+    drivers: t.drivers,
+    engineers: t.race_engineers,
+    engine: t.engine_supplier,
+    sponsors: (t.sponsors || []).slice(0, 5),
+    finance: t.finance ? {
+      balance_usd: Math.round(t.finance.balance_usd),
+      budget_cap_remaining_usd: Math.round(t.finance.budget_cap_remaining_usd)
+    } : undefined,
+    car: t.car ? {
+      // send only high-signal attributes
+      aero_efficiency: t.car.aero_efficiency,
+      chassis_balance: t.car.chassis_balance,
+      powertrain_output: t.car.powertrain_output,
+      reliability: t.car.reliability
+    } : undefined
   }));
 
-  // find the next race (or first)
+  const drivers = (s.drivers || []).map(d => ({
+    id: d.driver_id, name: d.name, team: d.team,
+    age: d.age, rating: d.overall_rating, form: d.form
+  }));
+
+  const principals = (s.principals || []).map(p => ({
+    id: p.tp_id, name: p.name, team: p.team,
+    // sample 4-5 attrs only
+    attrs: pickAttrs(p.attrs, ['leadership','politics','media','dev_focus','risk'])
+  }));
+
+  const engineers = (s.engineers || []).map(e => ({
+    id: e.re_id, name: e.name, team: e.team, driver: e.driver,
+    attrs: pickAttrs(e.attrs, ['tyre_management','racecraft','strategy','comms'])
+  }));
+
+  const calendar = (s.calendar || []).map(c => ({
+    round: c.round, name: c.name, date: c.date, country: c.country,
+    // track a few circuit attributes only
+    attrs: pickAttrs(c.attrs, ['downforce','tyre_wear','brake_severity','power_sensitivity'])
+  }));
+
+  // pick the next race
   const today = new Date();
   const next = (s.calendar || []).find(c => new Date(c.date) >= today) || (s.calendar || [])[0] || null;
 
+  // rumours: send only a small evolving slice
+  const rumours = (s.rumours || [])
+    .filter(r => r.status !== 'debunked')
+    .slice(0, 12)
+    .map(r => ({ id: r.rumour_id, category: r.category, status: r.status, impact: r.impact, content: r.content }));
+
+  // regs: keep headline knobs only
+  const regs = s.regulations ? pickAttrs(s.regulations, [
+    'budget_cap_usd','wind_tunnel_hours_base','points_system','penalties_policy'
+  ]) : undefined;
+
+  // sponsors catalog headline
+  const sponsors = s.sponsors ? { count: (s.sponsors.master || []).length } : undefined;
+
+  // dev + stats skinny headers
+  const development = s.development ? { modules: Object.keys(s.development || {}).length } : undefined;
+  const stats = s.stats ? {
+    have_results: !!s.stats.race_results,
+    have_standings: !!s.stats.driver_standings
+  } : undefined;
+
   return {
-    season: s.meta?.season, timeline: s.meta?.timeline,
-    selected_team: s.meta?.selected_team || null,
-    teams, drivers,
-    next_race: next ? { round: next.round, name: next.name, date: next.date, country: next.country } : null
+    meta: { season: s.meta?.season, timeline: s.meta?.timeline, selected_team: s.meta?.selected_team || null },
+    regs, sponsors,
+    teams, drivers, principals, engineers,
+    calendar, next_race: next ? { round: next.round, name: next.name, date: next.date, country: next.country } : null,
+    rumours, development, stats
   };
+
+  function pickAttrs(obj, keys) {
+    if (!obj) return undefined;
+    const out = {};
+    for (const k of keys) if (k in obj) out[k] = obj[k];
+    return Object.keys(out).length ? out : undefined;
+  }
 }
 
 
