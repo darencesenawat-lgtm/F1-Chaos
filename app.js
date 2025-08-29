@@ -100,16 +100,29 @@ async function send() {
   thinkingEl.classList.add('thinking');
 
   try {
-    const res = await fetch('api/chat', {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json' },
-      body: JSON.stringify({
-    messages: [
-      { role:'system', content: systemPrompt },
-      ...history.map(({role, content}) => ({role, content}))
-    ]
-  })
-});
+try {
+  // build seed-aware system prompt
+  const seed = getSeedContext();
+  const systemPrompt =
+    'You are DS AI, a concise race strategist assistant for an F1 management sim. ' +
+    'Use the provided game_state JSON to ground your answers in the current world (teams, drivers, next race). ' +
+    'If data is missing, ask concise follow-ups.' +
+    (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)');
+
+  const res = await fetch('api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [
+        { role:'system', content: systemPrompt },
+        ...history.map(({role, content}) => ({role, content}))
+      ]
+    })
+  });
+
+  const data = await res.json();
+  const reply = data.reply;
+  ...
     const data = await res.json();
     const reply = data.reply;
 
