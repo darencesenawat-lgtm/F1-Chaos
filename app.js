@@ -1,15 +1,14 @@
-// app.js — old Chat UI + API restored, plus hybrid game loader + buttons
-// Make sure index.html uses: <script type="module" src="app.js"></script>
-
+// spp.js — Chat chaos brain (auto-apply ops) + hybrid loader
+// Make sure index.html uses: <script type="module" src="spp.js"></script>
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
+/* ----------------------- Seed Snapshot (now with full car) ----------------------- */
 function getSeedContext() {
   // prefer live state; fall back to cached export
   const s = (typeof game?.state !== 'undefined') ? game.state
             : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
   if (!s) return null;
 
-  // compact maps to keep payload small but useful
   const teams = (s.teams || []).map(t => ({
     id: t.team_id,
     name: t.team_name,
@@ -22,13 +21,8 @@ function getSeedContext() {
       balance_usd: Math.round(t.finance.balance_usd),
       budget_cap_remaining_usd: Math.round(t.finance.budget_cap_remaining_usd)
     } : undefined,
-    car: t.car ? {
-      // send only high-signal attributes
-      aero_efficiency: t.car.aero_efficiency,
-      chassis_balance: t.car.chassis_balance,
-      powertrain_output: t.car.powertrain_output,
-      reliability: t.car.reliability
-    } : undefined
+    // ⬇️ full car object so GPT can reason about ALL attributes
+    car: t.car || undefined
   }));
 
   const drivers = (s.drivers || []).map(d => ({
@@ -38,7 +32,6 @@ function getSeedContext() {
 
   const principals = (s.principals || []).map(p => ({
     id: p.tp_id, name: p.name, team: p.team,
-    // sample 4-5 attrs only
     attrs: pickAttrs(p.attrs, ['leadership','politics','media','dev_focus','risk'])
   }));
 
@@ -49,29 +42,22 @@ function getSeedContext() {
 
   const calendar = (s.calendar || []).map(c => ({
     round: c.round, name: c.name, date: c.date, country: c.country,
-    // track a few circuit attributes only
     attrs: pickAttrs(c.attrs, ['downforce','tyre_wear','brake_severity','power_sensitivity'])
   }));
 
-  // pick the next race
   const today = new Date();
   const next = (s.calendar || []).find(c => new Date(c.date) >= today) || (s.calendar || [])[0] || null;
 
-  // rumours: send only a small evolving slice
   const rumours = (s.rumours || [])
     .filter(r => r.status !== 'debunked')
     .slice(0, 12)
     .map(r => ({ id: r.rumour_id, category: r.category, status: r.status, impact: r.impact, content: r.content }));
 
-  // regs: keep headline knobs only
   const regs = s.regulations ? pickAttrs(s.regulations, [
     'budget_cap_usd','wind_tunnel_hours_base','points_system','penalties_policy'
   ]) : undefined;
 
-  // sponsors catalog headline
   const sponsors = s.sponsors ? { count: (s.sponsors.master || []).length } : undefined;
-
-  // dev + stats skinny headers
   const development = s.development ? { modules: Object.keys(s.development || {}).length } : undefined;
   const stats = s.stats ? {
     have_results: !!s.stats.race_results,
@@ -94,10 +80,59 @@ function getSeedContext() {
   }
 }
 
+/* ----------------------- Auto-apply ops from GPT ----------------------- */
+// Supports { op: "set"|"inc"|"push", path: "/a/b/c" or "a.b.c", value: any }
+function applyOps(state, ops) {
+  const changedPaths = [];
+  if (!ops || ops._type !== 'ccsf_ops_v1' || !Array.isArray(ops.changes)) {
+    return { ok: false, changed: changedPaths, reason: 'no-ops' };
+  }
 
+  const toKeys = (path) => {
+    if (!path) return [];
+    const p = path.startsWith('/') ? path.slice(1) : path.replaceAll('.', '/');
+    return p.split('/').filter(Boolean);
+  };
+
+  const getRef = (root, keys) => {
+    let obj = root;
+    for (let i = 0; i < keys.length - 1; i++) {
+      const k = keys[i];
+      if (obj == null || !(k in obj)) return [null, null];
+      obj = obj[k];
+    }
+    return [obj, keys[keys.length - 1]];
+  };
+
+  const clampIfCarAttr = (path, v) => {
+    if (typeof v !== 'number') return v;
+    return path.includes('/car/') ? Math.max(0, Math.min(100, v)) : v;
+  };
+
+  for (const c of ops.changes) {
+    const keys = toKeys(c.path);
+    const [obj, key] = getRef(state, keys);
+    if (!obj || key == null) continue;
+
+    if (c.op === 'set') {
+      obj[key] = clampIfCarAttr(c.path, c.value);
+      changedPaths.push(c.path);
+    } else if (c.op === 'inc') {
+      const current = typeof obj[key] === 'number' ? obj[key] : 0;
+      obj[key] = clampIfCarAttr(c.path, current + Number(c.value || 0));
+      changedPaths.push(c.path);
+    } else if (c.op === 'push') {
+      if (!Array.isArray(obj[key])) obj[key] = [];
+      obj[key].push(c.value);
+      changedPaths.push(c.path);
+    }
+  }
+  return { ok: changedPaths.length > 0, changed: changedPaths };
+}
+
+/* ----------------------- Globals & helpers ----------------------- */
 let game = null;
 
-// ---------- announce fallback ----------
 if (typeof window.announce !== 'function') {
   window.announce = (msg) => {
     console.log('[ANNOUNCE]', msg);
@@ -114,10 +149,7 @@ if (typeof window.announce !== 'function') {
   };
 }
 
-// ---------- local save helpers ----------
-function saveLocal(state) {
-  try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {}
-}
+function saveLocal(state) { try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {} }
 function loadLocal() {
   try {
     const raw = localStorage.getItem('ccsf_state');
@@ -129,11 +161,10 @@ function loadLocal() {
 }
 function setGame(newGame) { game = newGame; }
 
-// ========== CHAT (restored from your old app.js) ==========
+/* ----------------------- Chat (same UI as before) ----------------------- */
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
 let history = [];
-
 function now() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
 function addMessage(role, content, time = now()) {
@@ -165,44 +196,70 @@ async function send() {
   const thinkingEl = chatEl.lastElementChild.querySelector('.content');
   thinkingEl.classList.add('thinking');
 
-try {
-  // build seed-aware system prompt
-  const seed = getSeedContext();
-  const systemPrompt =
-    'You are DS AI, a concise race strategist assistant for an F1 management sim. ' +
-    'Use the provided game_state JSON to ground your answers in the current world (teams, drivers, next race). ' +
-    'If data is missing, ask concise follow-ups.' +
-    (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)');
+  try {
+    // System prompt: STRICT JSON { narration, ops } and meme tone
+    const seed = getSeedContext();
+    const systemPrompt =
+      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim. ' +
+      'Read game_state and when the player asks for a decision (rumours, fire, research, TD, penalties, upgrades), ' +
+      'RETURN STRICT JSON ONLY with two fields: narration (string) and ops (object). ' +
+      'Format:\n' +
+      '{ "narration": "<spicy paddock gossip>", "ops": { "_type": "ccsf_ops_v1", "changes": [ { "op":"inc|set|push", "path": "/teams/<team_id>/car/tyre_degradation", "value": -2 } ] } }\n' +
+      'Rules: use ONLY existing fields; keep numbers sane (0–100 for car attrs); realistic costs/durations; if unsure, ask a one-line follow-up.' +
+      (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)');
 
-  const res = await fetch('api/chat', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      messages: [
-        { role:'system', content: systemPrompt },
-        ...history.map(({role, content}) => ({role, content}))
-      ]
-    })
-  });
+    const res = await fetch('api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role:'system', content: systemPrompt },
+          ...history.map(({role, content}) => ({role, content}))
+        ]
+      })
+    });
 
     const data = await res.json();
-    const reply = data.reply;
+    let reply = data.reply;
+
+    // Parse strict JSON (supports full JSON or JSON inside a code block/plain text)
+    let payload = null;
+    if (typeof reply === 'string') {
+      const start = reply.indexOf('{');
+      const end = reply.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        try { payload = JSON.parse(reply.slice(start, end + 1)); } catch {}
+      }
+    } else if (reply && typeof reply === 'object') {
+      payload = reply;
+    }
+
+    let outText = reply || 'No reply.';
+
+    // Auto-apply ops + explicitly narrate DB changes
+    if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
+      const resOps = applyOps(game.state, payload.ops);
+      if (resOps.ok) {
+        try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
+        const dbLine = `🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (payload.narration ? payload.narration + '\n\n' : '') + dbLine;
+      } else {
+        outText = payload.narration || outText;
+      }
+    }
 
     thinkingEl.classList.remove('thinking');
-    if (data.error) {
-      thinkingEl.textContent = 'Error: ' + data.error;
-    } else {
-      thinkingEl.textContent = reply || 'No reply.';
-      history.push({ role:'assistant', content: reply || 'No reply.', time: now() });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    }
+    thinkingEl.textContent = outText;
+
+    history.push({ role:'assistant', content: outText, time: now() });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch (err) {
     thinkingEl.classList.remove('thinking');
     thinkingEl.textContent = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
   }
 }
 
-// ========== BUTTONS (your existing IDs) ==========
+/* ----------------------- Top Buttons (unchanged) ----------------------- */
 function wireButtons() {
   const byId = (id) => document.getElementById(id);
 
@@ -210,7 +267,7 @@ function wireButtons() {
   if (btnLoadDefault) {
     btnLoadDefault.addEventListener('click', async () => {
       try {
-        const res = await loadGame({ modularBase: 'seed/' }); // relative paths
+        const res = await loadGame({ modularBase: 'seed/' });
         setGame(res);
         announce('🌱 Fresh seed loaded from seed/.');
         saveLocal(game.state);
@@ -267,25 +324,25 @@ function wireButtons() {
   }
 }
 
-// ========== BOOT ==========
+/* ----------------------- Boot ----------------------- */
 window.addEventListener('DOMContentLoaded', async () => {
-  // 1) chat DOM refs (same IDs as your old file)
+  // chat DOM refs (your original IDs)
   chatEl   = document.getElementById('chat');
   inputEl  = document.getElementById('input');
   sendBtn  = document.getElementById('send');
   clearBtn = document.getElementById('clear');
   tpl      = document.getElementById('bubble');
 
-  // 2) wire chat
+  // wire chat
   if (sendBtn) sendBtn.addEventListener('click', send);
   if (inputEl) inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   if (clearBtn) clearBtn.addEventListener('click', () => { history = []; localStorage.removeItem(STORAGE_KEY); chatEl.innerHTML = ''; restoreChat(); });
   restoreChat();
 
-  // 3) wire top control buttons
+  // wire top control buttons
   wireButtons();
 
-  // 4) boot game state (local → bundle → seed)
+  // boot game state (local → bundle → seed)
   const cached = loadLocal();
   if (cached) {
     setGame({
@@ -303,7 +360,6 @@ window.addEventListener('DOMContentLoaded', async () => {
     saveLocal(game.state);
   } catch (err) {
     console.error('BOOT ERROR:', err);
-    // As a fallback (don’t block chat even if seed fails)
     announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
   }
 });
