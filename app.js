@@ -22,13 +22,7 @@ function getSeedContext() {
       balance_usd: Math.round(t.finance.balance_usd),
       budget_cap_remaining_usd: Math.round(t.finance.budget_cap_remaining_usd)
     } : undefined,
-    car: t.car ? {
-      // send only high-signal attributes
-      aero_efficiency: t.car.aero_efficiency,
-      chassis_balance: t.car.chassis_balance,
-      powertrain_output: t.car.powertrain_output,
-      reliability: t.car.reliability
-    } : undefined
+    car: t.car ? || undefined
   }));
 
   const drivers = (s.drivers || []).map(d => ({
