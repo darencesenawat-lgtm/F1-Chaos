@@ -119,9 +119,6 @@ try {
     })
   });
 
-  const data = await res.json();
-  const reply = data.reply;
-  ...
     const data = await res.json();
     const reply = data.reply;
 
