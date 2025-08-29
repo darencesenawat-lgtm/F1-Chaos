@@ -99,7 +99,6 @@ async function send() {
   const thinkingEl = chatEl.lastElementChild.querySelector('.content');
   thinkingEl.classList.add('thinking');
 
-  try {
 try {
   // build seed-aware system prompt
   const seed = getSeedContext();
