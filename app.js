@@ -300,4 +300,4 @@ window.addEventListener('DOMContentLoaded', async () => {
     // As a fallback (don’t block chat even if seed fails)
     announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
   }
-});
+});?
