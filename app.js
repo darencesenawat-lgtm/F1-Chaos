@@ -123,56 +123,6 @@ function loadLocal() {
 }
 function setGame(newGame) { game = newGame; }
 
-// --- AUTO-APPLY GPT OPS (set/inc/push) ---
-function applyOps(state, ops) {
-  const changedPaths = [];
-  if (!ops || ops._type !== 'ccsf_ops_v1' || !Array.isArray(ops.changes)) {
-    return { ok: false, changed: changedPaths, reason: 'no-ops' };
-  }
-
-  const toKeys = (path) => {
-    if (!path) return [];
-    // accept "/a/b/c" or "a.b.c"
-    const p = path.startsWith('/') ? path.slice(1) : path.replaceAll('.', '/');
-    return p.split('/').filter(Boolean);
-  };
-
-  const getRef = (root, keys) => {
-    let obj = root;
-    for (let i = 0; i < keys.length - 1; i++) {
-      const k = keys[i];
-      if (obj == null || !(k in obj)) return [null, null];
-      obj = obj[k];
-    }
-    return [obj, keys[keys.length - 1]];
-  };
-
-  const clampIfCarAttr = (path, v) => {
-    if (typeof v !== 'number') return v;
-    return path.includes('/car/') ? Math.max(0, Math.min(100, v)) : v;
-  };
-
-  for (const c of ops.changes) {
-    const keys = toKeys(c.path);
-    const [obj, key] = getRef(state, keys);
-    if (!obj || key == null) continue;
-
-    if (c.op === 'set') {
-      obj[key] = clampIfCarAttr(c.path, c.value);
-      changedPaths.push(c.path);
-    } else if (c.op === 'inc') {
-      const current = typeof obj[key] === 'number' ? obj[key] : 0;
-      obj[key] = clampIfCarAttr(c.path, current + Number(c.value || 0));
-      changedPaths.push(c.path);
-    } else if (c.op === 'push') {
-      if (!Array.isArray(obj[key])) obj[key] = [];
-      obj[key].push(c.value);
-      changedPaths.push(c.path);
-    }
-  }
-  return { ok: changedPaths.length > 0, changed: changedPaths };
-}
-
 // ========== CHAT (restored from your old app.js) ==========
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
