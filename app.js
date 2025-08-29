@@ -104,12 +104,12 @@ async function send() {
       method: 'POST',
       headers: { 'Content-Type':'application/json' },
       body: JSON.stringify({
-        messages: [
-          { role:'system', content:'You are ChatGPT, a helpful and concise assistant.'},
-          ...history.map(({role, content}) => ({role, content}))
-        ]
-      })
-    });
+    messages: [
+      { role:'system', content: systemPrompt },
+      ...history.map(({role, content}) => ({role, content}))
+    ]
+  })
+});
     const data = await res.json();
     const reply = data.reply;
 
