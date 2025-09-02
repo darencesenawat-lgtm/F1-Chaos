@@ -1,9 +1,8 @@
-// app.js — Chat chaos brain + hybrid loader + LIVE TABS (drivers, driver/constructor standings)
+// app.js — Chat chaos brain + LIVE TABS + One-click RACE simulate
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
-/* ----------------------- Seed Snapshot (now with full car) ----------------------- */
+/* ----------------------- Seed Snapshot (slim context) ----------------------- */
 function getSeedContext() {
-  // prefer live state; fall back to cached export
   const s = (typeof game?.state !== 'undefined') ? game.state
             : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
   if (!s) return null;
@@ -20,7 +19,6 @@ function getSeedContext() {
       balance_usd: Math.round(t.finance.balance_usd),
       budget_cap_remaining_usd: Math.round(t.finance.budget_cap_remaining_usd)
     } : undefined,
-    // full car object so GPT can reason about ALL attributes
     car: t.car || undefined
   }));
 
@@ -79,7 +77,42 @@ function getSeedContext() {
   }
 }
 
-/* ----------------------- Auto-apply ops from GPT ----------------------- */
+/* ----------------------- Minimal race context for GPT ----------------------- */
+function buildRaceSliceForPrompt(s) {
+  const today = new Date();
+  const next = (s?.calendar || []).find(c => new Date(c.date) >= today) || (s?.calendar || [])[0] || null;
+
+  const teams = (s?.teams || []).map(t => ({
+    id: t.team_id, name: t.team_name,
+    car: t.car ? {
+      aero_efficiency: t.car.aero_efficiency,
+      drag: t.car.drag,
+      engine_power: t.car.engine_power,
+      mechanical_grip: t.car.mechanical_grip,
+      energy_recovery: t.car.energy_recovery,
+      tyre_degradation: t.car.tyre_degradation,
+      brake_cooling: t.car.brake_cooling,
+      reliability: t.car.reliability,
+      setup_window: t.car.setup_window
+    } : undefined
+  }));
+
+  const drivers = (s?.drivers || []).map(d => ({
+    name: d.name, team: d.team,
+    rating: d.overall_rating, form: d.form,
+    pace_mod: d.pace_mod, quali_mod: d.quali_mod, wet_mod: d.wet_mod
+  }));
+
+  return {
+    next_race: next ? { round: next.round, name: next.name, date: next.date, country: next.country, attrs: next.attrs } : null,
+    teams, drivers,
+    tyres: s?.tyres || s?.tires || undefined,
+    weather: s?.weather || undefined,
+    recent_results: Array.isArray(s?.stats?.race_results) ? s.stats.race_results.slice(-3) : []
+  };
+}
+
+/* ----------------------- Auto-apply ops (now creates missing paths) ----------------------- */
 // Supports { op: "set"|"inc"|"push", path: "/a/b/c" or "a.b.c", value: any }
 function applyOps(state, ops) {
   const changedPaths = [];
@@ -93,11 +126,11 @@ function applyOps(state, ops) {
     return p.split('/').filter(Boolean);
   };
 
-  const getRef = (root, keys) => {
+  const ensureRef = (root, keys) => {
     let obj = root;
     for (let i = 0; i < keys.length - 1; i++) {
       const k = keys[i];
-      if (obj == null || !(k in obj)) return [null, null];
+      if (obj[k] == null || typeof obj[k] !== 'object') obj[k] = {};
       obj = obj[k];
     }
     return [obj, keys[keys.length - 1]];
@@ -110,7 +143,7 @@ function applyOps(state, ops) {
 
   for (const c of ops.changes) {
     const keys = toKeys(c.path);
-    const [obj, key] = getRef(state, keys);
+    const [obj, key] = ensureRef(state, keys);
     if (!obj || key == null) continue;
 
     if (c.op === 'set') {
@@ -159,8 +192,13 @@ function loadLocal() {
   } catch { return null; }
 }
 function setGame(newGame) { game = newGame; }
+function ensureStatsScaffold(state) {
+  if (!state) return;
+  state.stats = state.stats || {};
+  state.stats.race_results = state.stats.race_results || [];
+}
 
-/* ----------------------- Chat (same UI as before) ----------------------- */
+/* ----------------------- Chat (same UI) ----------------------- */
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
 let history = [];
@@ -181,6 +219,106 @@ function restoreChat() {
   history.forEach(m => addMessage(m.role, m.content, m.time));
 }
 
+/* ----------------------- One-click Race button ----------------------- */
+function injectRaceButton() {
+  if (document.getElementById('race-btn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'race-btn';
+  btn.textContent = 'RACE';
+  btn.title = 'Simulate next race (quali + GP)';
+  btn.style.cssText = `
+    position:fixed; left:12px; bottom:12px; z-index:9999;
+    padding:10px 14px; border-radius:10px; border:1px solid #333; cursor:pointer;
+    font:700 14px/1 system-ui; letter-spacing:.5px;
+    background:#c1121f; color:#fff; box-shadow:0 3px 14px rgba(0,0,0,.35)
+  `;
+  btn.addEventListener('click', runRaceSim);
+  document.body.appendChild(btn);
+}
+
+async function runRaceSim() {
+  if (!game?.state) return announce('😵 No game state to simulate.');
+  ensureStatsScaffold(game.state);
+
+  // log to chat
+  const uMsg = { role:'user', content:'Simulate qualifying and race at the next event.', time: now() };
+  history.push(uMsg);
+  addMessage('user', uMsg.content, uMsg.time);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+
+  addMessage('assistant', 'Thinking…', now());
+  const thinkingEl = chatEl.lastElementChild.querySelector('.content');
+  thinkingEl.classList.add('thinking');
+
+  try {
+    const stateNow = game.state;
+    const raceSlice = buildRaceSliceForPrompt(stateNow);
+    const slim = getSeedContext();
+
+    const systemPrompt =
+      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
+      'Always return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\n' +
+      'Simulate QUALIFYING and RACE for the NEXT EVENT using race_context pace, tyres, weather, and form.\n' +
+      'Write results to /stats/race_results via a push op. Append an object: ' +
+      '{ round, name, finishers:[{driver,team,position,points}] }.\n' +
+      'If you compute updated standings, write arrays to /stats/driver_standings and /stats/constructor_standings.\n' +
+      'Keep car attributes within 0–100 when modifying. If crucial data is missing, ask ONE short follow-up in "narration" and output empty ops.\n' +
+      '\n' +
+      'game_state_slim=' + JSON.stringify(slim) + '\n' +
+      'race_context=' + JSON.stringify(raceSlice);
+
+    const res = await fetch('api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role:'system', content: systemPrompt }
+        ]
+      })
+    });
+
+    const data = await res.json();
+    let reply = data.reply;
+
+    // Parse strict JSON (supports text-wrapped JSON)
+    let payload = null;
+    if (typeof reply === 'string') {
+      const start = reply.indexOf('{');
+      const end = reply.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        try { payload = JSON.parse(reply.slice(start, end + 1)); } catch {}
+      }
+    } else if (reply && typeof reply === 'object') {
+      payload = reply;
+    }
+
+    let outText = reply || 'No reply.';
+
+    if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
+      const resOps = applyOps(game.state, payload.ops);
+      if (resOps.ok) {
+        try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
+        outText = (payload.narration ? payload.narration + '\n\n' : '') +
+                  `🧾 Database updated: ${resOps.changed.join(', ')}`;
+        // refresh standings tabs view after race
+        tryRenderStandingsTabs();
+      } else {
+        outText = payload.narration || outText;
+      }
+    }
+
+    thinkingEl.classList.remove('thinking');
+    thinkingEl.textContent = outText;
+
+    history.push({ role:'assistant', content: outText, time: now() });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+  } catch (err) {
+    thinkingEl.classList.remove('thinking');
+    thinkingEl.textContent = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
+  }
+}
+
+/* ----------------------- Chat send (general Q&A stays as-is) ----------------------- */
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -196,11 +334,10 @@ async function send() {
   thinkingEl.classList.add('thinking');
 
   try {
-    // System prompt: STRICT JSON { narration, ops } and meme tone
     const seed = getSeedContext();
     const systemPrompt =
       'You are DS AI, the cynical meme-narrator strategist for an F1 management sim. ' +
-      'Read game_state and when the player asks for a decision (rumours, fire, research, TD, penalties, upgrades), ' +
+      'Read game_state and when the player asks for a decision (rumours, fire, research, TD, penalties, upgrades, race sim), ' +
       'RETURN STRICT JSON ONLY with two fields: narration (string) and ops (object). ' +
       'Format:\n' +
       '{ "narration": "<spicy paddock gossip>", "ops": { "_type": "ccsf_ops_v1", "changes": [ { "op":"inc|set|push", "path": "/teams/<team_id>/car/tyre_degradation", "value": -2 } ] } }\n' +
@@ -221,7 +358,6 @@ async function send() {
     const data = await res.json();
     let reply = data.reply;
 
-    // Parse strict JSON (supports full JSON or JSON inside a code block/plain text)
     let payload = null;
     if (typeof reply === 'string') {
       const start = reply.indexOf('{');
@@ -234,14 +370,13 @@ async function send() {
     }
 
     let outText = reply || 'No reply.';
-
-    // Auto-apply ops + explicitly narrate DB changes
     if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
       const resOps = applyOps(game.state, payload.ops);
       if (resOps.ok) {
         try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
-        const dbLine = `🧾 Database updated: ${resOps.changed.join(', ')}`;
-        outText = (payload.narration ? payload.narration + '\n\n' : '') + dbLine;
+        outText = (payload.narration ? payload.narration + '\n\n' : '') +
+                  `🧾 Database updated: ${resOps.changed.join(', ')}`;
+        tryRenderStandingsTabs();
       } else {
         outText = payload.narration || outText;
       }
@@ -258,7 +393,7 @@ async function send() {
   }
 }
 
-/* ----------------------- Top Buttons (unchanged) ----------------------- */
+/* ----------------------- Top Buttons ----------------------- */
 function wireButtons() {
   const byId = (id) => document.getElementById(id);
 
@@ -268,9 +403,9 @@ function wireButtons() {
       try {
         const res = await loadGame({ modularBase: 'seed/' });
         setGame(res);
+        ensureStatsScaffold(game.state);
         announce('🌱 Fresh seed loaded from seed/.');
         saveLocal(game.state);
-        // refresh tabs after load
         tryRenderStandingsTabs();
       } catch (e) {
         console.error(e);
@@ -289,6 +424,7 @@ function wireButtons() {
       try {
         const res = await loadGame({ bundleUrl: f });
         setGame(res);
+        ensureStatsScaffold(game.state);
         announce('📦 Save imported.');
         saveLocal(game.state);
         tryRenderStandingsTabs();
@@ -329,10 +465,8 @@ function wireButtons() {
 
 /* ----------------------- Standings Tabs (no HTML changes) ----------------------- */
 function injectStandingsTabs() {
-  // avoid double-inject
   if (document.getElementById('ccsf_tabs')) return;
 
-  // shell
   const wrap = document.createElement('div');
   wrap.id = 'ccsf_tabs';
   wrap.style.cssText = `
@@ -340,8 +474,6 @@ function injectStandingsTabs() {
     background:#0e0e10; color:#eaeaea; border:1px solid #2a2a2a; border-radius:10px; box-shadow:0 6px 28px rgba(0,0,0,.45);
     font:12px/1.35 system-ui; user-select:text; overflow:hidden
   `;
-
-  // header + tabs
   wrap.innerHTML = `
     <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#141414; border-bottom:1px solid #222">
       <strong style="font:600 13px system-ui;">📊 Live Paddock</strong>
@@ -354,7 +486,6 @@ function injectStandingsTabs() {
     </div>
     <div id="ccsf_panel" style="background:#0e0e10; padding:10px 10px 12px; max-height:60vh; overflow:auto;"></div>
   `;
-
   document.body.appendChild(wrap);
 
   const tabs = [
@@ -397,14 +528,12 @@ function injectStandingsTabs() {
     if (id === 'tm_std')       return panel.replaceChildren(buildTeamStandingsTable(game.state));
   }
 
-  // first view
   renderTab('drivers');
 }
 
 function tryRenderStandingsTabs() {
   const root = document.getElementById('ccsf_tabs');
   if (!root) return;
-  // re-render active tab to reflect latest state
   const active = root.dataset.active || 'drivers';
   const panel = root.querySelector('#ccsf_panel');
   if (!panel) return;
@@ -446,9 +575,7 @@ function buildTeamStandingsTable(s) {
 
 /* ---------- Data sources (stats → standings; fallback compute) ---------- */
 function getDriverStandings(s) {
-  // 1) direct from save if present
   if (s?.stats?.driver_standings?.length) {
-    // normalize
     return s.stats.driver_standings
       .map(x => ({
         driver: x.driver || x.name || x.driver_name,
@@ -459,7 +586,6 @@ function getDriverStandings(s) {
       }))
       .sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
   }
-  // 2) compute from race results
   return computeStandingsFromResults(s).drivers;
 }
 
@@ -479,11 +605,10 @@ function getTeamStandings(s) {
 
 /* ---------- Fallback calculator (from race_results + points_system) ---------- */
 function computeStandingsFromResults(s) {
-  const results = s?.stats?.race_results || []; // expect array of races, each with finishing order
-  const ptsMap = s?.regulations?.points_system || [25,18,15,12,10,8,6,4,2,1]; // default F1 style
-  const drv = new Map(); // driver -> {driver, team, points, wins, podiums}
-  const tm  = new Map(); // team   -> {team, points, wins, podiums}
-
+  const results = s?.stats?.race_results || [];
+  const ptsMap = s?.regulations?.points_system || [25,18,15,12,10,8,6,4,2,1];
+  const drv = new Map();
+  const tm  = new Map();
   const driverTeamLookup = new Map((s.drivers || []).map(d => [d.name, d.team]));
 
   for (const race of results) {
@@ -497,8 +622,7 @@ function computeStandingsFromResults(s) {
       const isWin = idx === 0 ? 1 : 0;
 
       const drow = drv.get(name) || { driver:name, team, points:0, wins:0, podiums:0 };
-      drow.points += pts; drow.wins += isWin; drow.podiums += isPod;
-      drow.team = team; // keep latest
+      drow.points += pts; drow.wins += isWin; drow.podiums += isPod; drow.team = team;
       drv.set(name, drow);
 
       const trow = tm.get(team) || { team, points:0, wins:0, podiums:0 };
@@ -571,8 +695,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   // wire top control buttons
   wireButtons();
 
-  // inject the live tabs panel
+  // inject UI
   injectStandingsTabs();
+  injectRaceButton();
 
   // boot game state (local → bundle → seed)
   const cached = loadLocal();
@@ -581,8 +706,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       manifest: { version: '2025.0.1', season: cached.meta.season || 2025, timeline: cached.meta.timeline || 'preseason' },
       state: cached
     });
+    ensureStatsScaffold(game.state);
     announce('♻️ Resumed from local save.');
-    // render tabs with current state
     tryRenderStandingsTabs();
     return;
   }
@@ -590,6 +715,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   try {
     const res = await bootGame({ defaultBundle: 'saves/slot1.ccsf.json', modularBase: 'seed/' });
     setGame(res);
+    ensureStatsScaffold(game.state);
     announce('✅ Seed loaded successfully! The grid is ready — time to play.');
     saveLocal(game.state);
     tryRenderStandingsTabs();
