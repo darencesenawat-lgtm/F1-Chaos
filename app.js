@@ -1,9 +1,9 @@
-// app.js — Chat UI + API with hybrid handler for reply | narration/ops | raw choices
-// Ensure index.html has: <script type="module" src="app.js"></script>
-
+// app.js — Chat chaos brain + hybrid loader + LIVE TABS (drivers, driver/constructor standings)
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
+/* ----------------------- Seed Snapshot (now with full car) ----------------------- */
 function getSeedContext() {
+  // prefer live state; fall back to cached export
   const s = (typeof game?.state !== 'undefined') ? game.state
             : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
   if (!s) return null;
@@ -20,12 +20,8 @@ function getSeedContext() {
       balance_usd: Math.round(t.finance.balance_usd),
       budget_cap_remaining_usd: Math.round(t.finance.budget_cap_remaining_usd)
     } : undefined,
-    car: t.car ? {
-      aero_efficiency: t.car.aero_efficiency,
-      chassis_balance: t.car.chassis_balance,
-      powertrain_output: t.car.powertrain_output,
-      reliability: t.car.reliability
-    } : undefined
+    // full car object so GPT can reason about ALL attributes
+    car: t.car || undefined
   }));
 
   const drivers = (s.drivers || []).map(d => ({
@@ -83,9 +79,59 @@ function getSeedContext() {
   }
 }
 
+/* ----------------------- Auto-apply ops from GPT ----------------------- */
+// Supports { op: "set"|"inc"|"push", path: "/a/b/c" or "a.b.c", value: any }
+function applyOps(state, ops) {
+  const changedPaths = [];
+  if (!ops || ops._type !== 'ccsf_ops_v1' || !Array.isArray(ops.changes)) {
+    return { ok: false, changed: changedPaths, reason: 'no-ops' };
+  }
+
+  const toKeys = (path) => {
+    if (!path) return [];
+    const p = path.startsWith('/') ? path.slice(1) : path.replaceAll('.', '/');
+    return p.split('/').filter(Boolean);
+  };
+
+  const getRef = (root, keys) => {
+    let obj = root;
+    for (let i = 0; i < keys.length - 1; i++) {
+      const k = keys[i];
+      if (obj == null || !(k in obj)) return [null, null];
+      obj = obj[k];
+    }
+    return [obj, keys[keys.length - 1]];
+  };
+
+  const clampIfCarAttr = (path, v) => {
+    if (typeof v !== 'number') return v;
+    return path.includes('/car/') ? Math.max(0, Math.min(100, v)) : v;
+  };
+
+  for (const c of ops.changes) {
+    const keys = toKeys(c.path);
+    const [obj, key] = getRef(state, keys);
+    if (!obj || key == null) continue;
+
+    if (c.op === 'set') {
+      obj[key] = clampIfCarAttr(c.path, c.value);
+      changedPaths.push(c.path);
+    } else if (c.op === 'inc') {
+      const current = typeof obj[key] === 'number' ? obj[key] : 0;
+      obj[key] = clampIfCarAttr(c.path, current + Number(c.value || 0));
+      changedPaths.push(c.path);
+    } else if (c.op === 'push') {
+      if (!Array.isArray(obj[key])) obj[key] = [];
+      obj[key].push(c.value);
+      changedPaths.push(c.path);
+    }
+  }
+  return { ok: changedPaths.length > 0, changed: changedPaths };
+}
+
+/* ----------------------- Globals & helpers ----------------------- */
 let game = null;
 
-// ---------- announce fallback ----------
 if (typeof window.announce !== 'function') {
   window.announce = (msg) => {
     console.log('[ANNOUNCE]', msg);
@@ -102,10 +148,7 @@ if (typeof window.announce !== 'function') {
   };
 }
 
-// ---------- local save helpers ----------
-function saveLocal(state) {
-  try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {}
-}
+function saveLocal(state) { try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {} }
 function loadLocal() {
   try {
     const raw = localStorage.getItem('ccsf_state');
@@ -117,11 +160,10 @@ function loadLocal() {
 }
 function setGame(newGame) { game = newGame; }
 
-// ========== CHAT ==========
+/* ----------------------- Chat (same UI as before) ----------------------- */
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
 let history = [];
-
 function now() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
 
 function addMessage(role, content, time = now()) {
@@ -154,12 +196,15 @@ async function send() {
   thinkingEl.classList.add('thinking');
 
   try {
-    // Seed-aware system prompt — now bans JSON role-play unless asked
+    // System prompt: STRICT JSON { narration, ops } and meme tone
     const seed = getSeedContext();
     const systemPrompt =
-      'You are DS AI, a concise race strategist assistant for an F1 management sim. ' +
-      'Use the provided game_state JSON to ground your answers (teams, drivers, next race). ' +
-      'Answer in plain text for this chat UI. Do NOT return JSON keys like "narration" or "ops" unless I explicitly ask for a JSON export.' +
+      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim. ' +
+      'Read game_state and when the player asks for a decision (rumours, fire, research, TD, penalties, upgrades), ' +
+      'RETURN STRICT JSON ONLY with two fields: narration (string) and ops (object). ' +
+      'Format:\n' +
+      '{ "narration": "<spicy paddock gossip>", "ops": { "_type": "ccsf_ops_v1", "changes": [ { "op":"inc|set|push", "path": "/teams/<team_id>/car/tyre_degradation", "value": -2 } ] } }\n' +
+      'Rules: use ONLY existing fields; keep numbers sane (0–100 for car attrs); realistic costs/durations; if unsure, ask a one-line follow-up.' +
       (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)');
 
     const res = await fetch('api/chat', {
@@ -174,39 +219,46 @@ async function send() {
     });
 
     const data = await res.json();
+    let reply = data.reply;
 
-    // HYBRID RESPONSE HANDLER — prefers {reply}, falls back to {narration, ops}, or choices[0].message.content
-    const { reply, narration, ops } = data || {};
-    let replyText = reply;
+    // Parse strict JSON (supports full JSON or JSON inside a code block/plain text)
+    let payload = null;
+    if (typeof reply === 'string') {
+      const start = reply.indexOf('{');
+      const end = reply.lastIndexOf('}');
+      if (start !== -1 && end !== -1) {
+        try { payload = JSON.parse(reply.slice(start, end + 1)); } catch {}
+      }
+    } else if (reply && typeof reply === 'object') {
+      payload = reply;
+    }
 
-    if (!replyText) {
-      if (narration || ops) {
-        const opsLines = ops && Object.keys(ops).length
-          ? '\n\n[Ops]\n' + Object.entries(ops).map(([k, v]) => `• ${k}: ${JSON.stringify(v)}`).join('\n')
-          : '';
-        replyText = (narration || '').trim() + opsLines;
-      } else if (data?.choices?.[0]?.message?.content) {
-        replyText = data.choices[0].message.content;
-      } else if (typeof data === 'string') {
-        replyText = data;
+    let outText = reply || 'No reply.';
+
+    // Auto-apply ops + explicitly narrate DB changes
+    if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
+      const resOps = applyOps(game.state, payload.ops);
+      if (resOps.ok) {
+        try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
+        const dbLine = `🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (payload.narration ? payload.narration + '\n\n' : '') + dbLine;
+      } else {
+        outText = payload.narration || outText;
       }
     }
 
     thinkingEl.classList.remove('thinking');
-    if (data.error) {
-      thinkingEl.textContent = 'Error: ' + data.error;
-    } else {
-      thinkingEl.textContent = replyText || 'No reply.';
-      history.push({ role:'assistant', content: replyText || 'No reply.', time: now() });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
-    }
+    thinkingEl.textContent = outText;
+
+    history.push({ role:'assistant', content: outText, time: now() });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch (err) {
     thinkingEl.classList.remove('thinking');
     thinkingEl.textContent = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
   }
 }
 
-// ========== BUTTONS ==========
+/* ----------------------- Top Buttons (unchanged) ----------------------- */
 function wireButtons() {
   const byId = (id) => document.getElementById(id);
 
@@ -214,10 +266,12 @@ function wireButtons() {
   if (btnLoadDefault) {
     btnLoadDefault.addEventListener('click', async () => {
       try {
-        const res = await loadGame({ modularBase: 'seed/' }); // relative paths
+        const res = await loadGame({ modularBase: 'seed/' });
         setGame(res);
         announce('🌱 Fresh seed loaded from seed/.');
         saveLocal(game.state);
+        // refresh tabs after load
+        tryRenderStandingsTabs();
       } catch (e) {
         console.error(e);
         announce('⚠️ Could not load seed/. Check seed/manifest.json.');
@@ -237,6 +291,7 @@ function wireButtons() {
         setGame(res);
         announce('📦 Save imported.');
         saveLocal(game.state);
+        tryRenderStandingsTabs();
       } catch (err) {
         console.error(err);
         announce('❌ Invalid or corrupted save file.');
@@ -267,25 +322,259 @@ function wireButtons() {
     btnClearLocal.addEventListener('click', () => {
       localStorage.removeItem('ccsf_state');
       announce('🗑️ Local save cleared.');
+      tryRenderStandingsTabs();
     });
   }
 }
 
-// ========== BOOT ==========
+/* ----------------------- Standings Tabs (no HTML changes) ----------------------- */
+function injectStandingsTabs() {
+  // avoid double-inject
+  if (document.getElementById('ccsf_tabs')) return;
+
+  // shell
+  const wrap = document.createElement('div');
+  wrap.id = 'ccsf_tabs';
+  wrap.style.cssText = `
+    position:fixed; left:12px; top:12px; z-index:9998; width: min(900px, 92vw);
+    background:#0e0e10; color:#eaeaea; border:1px solid #2a2a2a; border-radius:10px; box-shadow:0 6px 28px rgba(0,0,0,.45);
+    font:12px/1.35 system-ui; user-select:text; overflow:hidden
+  `;
+
+  // header + tabs
+  wrap.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px; padding:8px 10px; background:#141414; border-bottom:1px solid #222">
+      <strong style="font:600 13px system-ui;">📊 Live Paddock</strong>
+      <div id="ccsf_tabbar" style="display:flex; gap:6px; margin-left:12px;"></div>
+      <div style="margin-left:auto; display:flex; gap:8px;">
+        <button id="ccsf_refresh" style="background:#1f1f1f;border:1px solid #333;color:#ddd;padding:4px 8px;border-radius:6px;cursor:pointer;">Refresh</button>
+        <button id="ccsf_collapse" style="background:#1f1f1f;border:1px solid #333;color:#ddd;padding:4px 8px;border-radius:6px;cursor:pointer;">—</button>
+        <button id="ccsf_close" style="background:#1f1f1f;border:1px solid #333;color:#ddd;padding:4px 8px;border-radius:6px;cursor:pointer;">✕</button>
+      </div>
+    </div>
+    <div id="ccsf_panel" style="background:#0e0e10; padding:10px 10px 12px; max-height:60vh; overflow:auto;"></div>
+  `;
+
+  document.body.appendChild(wrap);
+
+  const tabs = [
+    { id:'drivers',  label:'Drivers' },
+    { id:'drv_std',  label:'Driver Standings' },
+    { id:'tm_std',   label:'Team Standings' },
+  ];
+
+  const tabbar = wrap.querySelector('#ccsf_tabbar');
+  tabs.forEach(t => {
+    const b = document.createElement('button');
+    b.textContent = t.label;
+    b.dataset.id = t.id;
+    b.style.cssText = `background:#1a1a1a;border:1px solid #333;color:#e0e0e0;padding:4px 8px;border-radius:6px;cursor:pointer`;
+    b.addEventListener('click', () => renderTab(t.id));
+    tabbar.appendChild(b);
+  });
+
+  wrap.querySelector('#ccsf_close').onclick = () => wrap.remove();
+  wrap.querySelector('#ccsf_collapse').onclick = (e) => {
+    const p = wrap.querySelector('#ccsf_panel');
+    const btn = e.currentTarget;
+    if (p.style.display === 'none') { p.style.display = 'block'; btn.textContent = '—'; }
+    else { p.style.display = 'none'; btn.textContent = '+'; }
+  };
+  wrap.querySelector('#ccsf_refresh').onclick = () => {
+    announce('🔄 Refreshed from current save');
+    const active = wrap.dataset.active || 'drivers';
+    renderTab(active);
+  };
+
+  function renderTab(id) {
+    wrap.dataset.active = id;
+    [...tabbar.children].forEach(b => b.style.background = (b.dataset.id === id) ? '#2a2a2a' : '#1a1a1a');
+    const panel = wrap.querySelector('#ccsf_panel');
+    if (!game?.state) { panel.textContent = 'No game state'; return; }
+
+    if (id === 'drivers')      return panel.replaceChildren(buildDriversTable(game.state));
+    if (id === 'drv_std')      return panel.replaceChildren(buildDriverStandingsTable(game.state));
+    if (id === 'tm_std')       return panel.replaceChildren(buildTeamStandingsTable(game.state));
+  }
+
+  // first view
+  renderTab('drivers');
+}
+
+function tryRenderStandingsTabs() {
+  const root = document.getElementById('ccsf_tabs');
+  if (!root) return;
+  // re-render active tab to reflect latest state
+  const active = root.dataset.active || 'drivers';
+  const panel = root.querySelector('#ccsf_panel');
+  if (!panel) return;
+  if (!game?.state) { panel.textContent = 'No game state'; return; }
+
+  if (active === 'drivers')      panel.replaceChildren(buildDriversTable(game.state));
+  if (active === 'drv_std')      panel.replaceChildren(buildDriverStandingsTable(game.state));
+  if (active === 'tm_std')       panel.replaceChildren(buildTeamStandingsTable(game.state));
+}
+
+/* ---------- Table builders ---------- */
+function buildDriversTable(s) {
+  const drivers = (s.drivers || []).map(d => ({
+    name: d.name, team: d.team, age: d.age, rating: d.overall_rating, form: d.form
+  }));
+  const tbl = mkTable(['#','Driver','Team','Age','Rating','Form'],
+    drivers
+      .sort((a,b) => (b.rating ?? 0) - (a.rating ?? 0))
+      .map((d,i) => [i+1, d.name, d.team, d.age ?? '-', d.rating ?? '-', d.form ?? '-'])
+  );
+  return wrapTable('Driver List', tbl, '👤');
+}
+
+function buildDriverStandingsTable(s) {
+  const standings = getDriverStandings(s);
+  const tbl = mkTable(['Pos','Driver','Team','Points','Wins','Podiums'],
+    standings.map((r,i) => [i+1, r.driver, r.team, r.points, r.wins||0, r.podiums||0])
+  );
+  return wrapTable('Driver Standings', tbl, '🏁');
+}
+
+function buildTeamStandingsTable(s) {
+  const standings = getTeamStandings(s);
+  const tbl = mkTable(['Pos','Team','Points','Wins','Podiums'],
+    standings.map((r,i) => [i+1, r.team, r.points, r.wins||0, r.podiums||0])
+  );
+  return wrapTable('Constructor Standings', tbl, '🏭');
+}
+
+/* ---------- Data sources (stats → standings; fallback compute) ---------- */
+function getDriverStandings(s) {
+  // 1) direct from save if present
+  if (s?.stats?.driver_standings?.length) {
+    // normalize
+    return s.stats.driver_standings
+      .map(x => ({
+        driver: x.driver || x.name || x.driver_name,
+        team: x.team,
+        points: Number(x.points ?? 0),
+        wins: Number(x.wins ?? 0),
+        podiums: Number(x.podiums ?? 0),
+      }))
+      .sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+  }
+  // 2) compute from race results
+  return computeStandingsFromResults(s).drivers;
+}
+
+function getTeamStandings(s) {
+  if (s?.stats?.constructor_standings?.length) {
+    return s.stats.constructor_standings
+      .map(x => ({
+        team: x.team || x.name,
+        points: Number(x.points ?? 0),
+        wins: Number(x.wins ?? 0),
+        podiums: Number(x.podiums ?? 0),
+      }))
+      .sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+  }
+  return computeStandingsFromResults(s).teams;
+}
+
+/* ---------- Fallback calculator (from race_results + points_system) ---------- */
+function computeStandingsFromResults(s) {
+  const results = s?.stats?.race_results || []; // expect array of races, each with finishing order
+  const ptsMap = s?.regulations?.points_system || [25,18,15,12,10,8,6,4,2,1]; // default F1 style
+  const drv = new Map(); // driver -> {driver, team, points, wins, podiums}
+  const tm  = new Map(); // team   -> {team, points, wins, podiums}
+
+  const driverTeamLookup = new Map((s.drivers || []).map(d => [d.name, d.team]));
+
+  for (const race of results) {
+    const finishers = race?.finishers || race?.classification || race?.results || [];
+    finishers.forEach((entry, idx) => {
+      const name = entry.driver || entry.name;
+      if (!name) return;
+      const team = entry.team || driverTeamLookup.get(name) || '—';
+      const pts = Number(entry.points ?? ptsMap[idx] ?? 0);
+      const isPod = idx <= 2 ? 1 : 0;
+      const isWin = idx === 0 ? 1 : 0;
+
+      const drow = drv.get(name) || { driver:name, team, points:0, wins:0, podiums:0 };
+      drow.points += pts; drow.wins += isWin; drow.podiums += isPod;
+      drow.team = team; // keep latest
+      drv.set(name, drow);
+
+      const trow = tm.get(team) || { team, points:0, wins:0, podiums:0 };
+      trow.points += pts; trow.wins += isWin; trow.podiums += isPod;
+      tm.set(team, trow);
+    });
+  }
+
+  const drivers = [...drv.values()].sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+  const teams   = [...tm.values()].sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+  return { drivers, teams };
+}
+
+/* ---------- tiny table helpers ---------- */
+function mkTable(headers, rows) {
+  const table = document.createElement('table');
+  table.style.cssText = 'width:100%; border-collapse:collapse; font:12px/1.35 system-ui';
+  const thead = document.createElement('thead');
+  const trh = document.createElement('tr');
+  headers.forEach(h => {
+    const th = document.createElement('th');
+    th.textContent = h;
+    th.style.cssText = 'text-align:left; padding:6px 8px; border-bottom:1px solid #2a2a2a; position:sticky; top:0; background:#111';
+    trh.appendChild(th);
+  });
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody = document.createElement('tbody');
+  rows.forEach(r => {
+    const tr = document.createElement('tr');
+    r.forEach((cell,i) => {
+      const td = document.createElement('td');
+      td.textContent = (cell ?? '').toString();
+      td.style.cssText = 'padding:6px 8px; border-bottom:1px dashed #1f1f1f;';
+      if (i === 0) td.style.color = '#aaa';
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+  table.appendChild(tbody);
+  return table;
+}
+
+function wrapTable(title, tbl, icon='📊') {
+  const box = document.createElement('div');
+  const h = document.createElement('div');
+  h.innerHTML = `<strong style="font:600 13px system-ui">${icon} ${title}</strong>`;
+  h.style.cssText = 'margin:0 0 8px 2px; color:#ddd';
+  box.appendChild(h);
+  box.appendChild(tbl);
+  return box;
+}
+
+/* ----------------------- Boot ----------------------- */
 window.addEventListener('DOMContentLoaded', async () => {
+  // chat DOM refs (your original IDs)
   chatEl   = document.getElementById('chat');
   inputEl  = document.getElementById('input');
   sendBtn  = document.getElementById('send');
   clearBtn = document.getElementById('clear');
   tpl      = document.getElementById('bubble');
 
+  // wire chat
   if (sendBtn) sendBtn.addEventListener('click', send);
-  if (inputEl) inputEl.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+  if (inputEl) addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
   if (clearBtn) clearBtn.addEventListener('click', () => { history = []; localStorage.removeItem(STORAGE_KEY); chatEl.innerHTML = ''; restoreChat(); });
   restoreChat();
 
+  // wire top control buttons
   wireButtons();
 
+  // inject the live tabs panel
+  injectStandingsTabs();
+
+  // boot game state (local → bundle → seed)
   const cached = loadLocal();
   if (cached) {
     setGame({
@@ -293,6 +582,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       state: cached
     });
     announce('♻️ Resumed from local save.');
+    // render tabs with current state
+    tryRenderStandingsTabs();
     return;
   }
 
@@ -301,6 +592,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setGame(res);
     announce('✅ Seed loaded successfully! The grid is ready — time to play.');
     saveLocal(game.state);
+    tryRenderStandingsTabs();
   } catch (err) {
     console.error('BOOT ERROR:', err);
     announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
