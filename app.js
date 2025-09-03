@@ -1,6 +1,9 @@
-// app.js — DS AI Chaos Brain: Live Tabs + One-click RACE + Robust Standings + iPad Debug Logs
+// app.js — DS AI Chat-First Build: Friendly Banter + Hidden Ops, Roster-Locked RACE, Auto-Standings
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
+
+/* ----------------------- Debug toggle (iPad logs OFF by default) ----------------------- */
+const DEBUG = false;
 
 /* ----------------------- Seed Snapshot (slim context for general Q&A) ----------------------- */
 function getSeedContext() {
@@ -167,6 +170,7 @@ function applyOps(state, ops) {
 
 /* ----------------------- Globals & helpers ----------------------- */
 let game = null;
+const FORCE_ROSTER_TEAMS = true; // lock standings to roster team mapping
 
 if (typeof window.announce !== 'function') {
   window.announce = (msg) => {
@@ -203,11 +207,45 @@ function ensureStatsScaffold(state) {
 
 /* ---- Inline debug to chat (iPad-friendly) ---- */
 function logApiToChat(title, info) {
+  if (!DEBUG) return;
   try {
     const pretty = typeof info === 'string' ? info : JSON.stringify(info, null, 2);
     addMessage('assistant', `🔎 ${title}\n${pretty}`);
   } catch {
     addMessage('assistant', `🔎 ${title} (unprintable)`);
+  }
+}
+
+/* ---- Clean narration (strip accidental code fences/backticks) ---- */
+function cleanNarration(s) {
+  if (!s) return '';
+  return String(s).replace(/```[\s\S]*?```/g, '').replace(/`/g, '').trim();
+}
+
+/* ---- Intent switch: when do we need ops mode? ---- */
+function isOpsIntent(text) {
+  if (!text) return false;
+  const t = text.toLowerCase();
+  return /\b(sim|simulate|race|quali|qualifying|grand prix|gp|upgrade|develop|wind tunnel|research|engine|contract|sign|hire|fire|penalty|penalties|td|technical directive|standings|apply|push|ops)\b/.test(t)
+       || t.startsWith('/ops')
+       || t.endsWith('!ops');
+}
+
+/* ---- Recompute + store standings after any ops ---- */
+function recomputeAndStoreStandings(state) {
+  try {
+    const { drivers, teams } = computeStandingsFromResults(state);
+    state.stats = state.stats || {};
+    state.stats.driver_standings = drivers.map(r => ({
+      driver: r.driver, team: r.team, points: r.points, wins: r.wins||0, podiums: r.podiums||0
+    }));
+    state.stats.constructor_standings = teams.map(r => ({
+      team: r.team, points: r.points, wins: r.wins||0, podiums: r.podiums||0
+    }));
+    return true;
+  } catch (e) {
+    console.error('standings recompute failed', e);
+    return false;
   }
 }
 
@@ -228,7 +266,7 @@ function addMessage(role, content, time = now()) {
 
 function restoreChat() {
   history = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  if (history.length === 0) { addMessage('assistant', 'Hi! I am DS AI. Ask me anything.'); return; }
+  if (history.length === 0) { addMessage('assistant', 'Oi, boss. Say the word and I’ll start stirring the pot.'); return; }
   history.forEach(m => addMessage(m.role, m.content, m.time));
 }
 
@@ -268,16 +306,34 @@ async function runRaceSim() {
     const raceSlice = buildRaceSliceForPrompt(stateNow);
     const slim = getSeedContext();
 
+    // Roster + teams + points guardrails
+    const rosterDrivers = (stateNow?.drivers || []).map(d => d.name).filter(Boolean);
+    const rosterTeams   = (stateNow?.teams || []).map(t => t.team_name || t.name).filter(Boolean);
+    const ptsObj = (() => {
+      const ps = stateNow?.regulations?.points_system;
+      if (Array.isArray(ps)) return Object.fromEntries(ps.map((v,i)=>[i+1, Number(v||0)]));
+      if (ps && typeof ps === 'object') {
+        const o = {};
+        Object.keys(ps).forEach(k => { const m = /^p?(\d+)$/i.exec(k); if (m) o[Number(m[1])] = Number(ps[k]||0); });
+        return o;
+      }
+      return {1:25,2:18,3:15,4:12,5:10,6:8,7:6,8:4,9:2,10:1};
+    })();
+
     const systemPrompt =
       'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
-      'Always return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\n' +
-      'Simulate QUALIFYING and the RACE for the NEXT EVENT using race_context pace, tyres, weather, and form.\n' +
-      'WRITE RESULTS to /stats/race_results with a PUSH op. Append an object: ' +
-      '{ "round": <number>, "name": "<track>", "finishers":[{"driver":"<name>","team":"<team>","position":1,"points":25}, ...] }.\n' +
-      'If you compute updated standings, write arrays to /stats/driver_standings and /stats/constructor_standings.\n' +
-      'Keep car attributes within 0–100 when modifying. If crucial data is missing, ask ONE short follow-up in "narration" and output empty ops.\n' +
-      'Example OUTPUT (STRICT JSON):\n' +
-      '{ "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":7,"name":"Montreal","finishers":[{"driver":"A","team":"Alpha","position":1,"points":25}]}}]}}\n' +
+      'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\n' +
+      'Narration: 2–4 short sentences, witty/cynical paddock vibe. No code blocks.\n' +
+      'You MUST ONLY use these names. If a name is missing, replace with the closest roster driver.\n' +
+      'Allowed drivers=' + JSON.stringify(rosterDrivers) + '\n' +
+      'Allowed teams=' + JSON.stringify(rosterTeams) + '\n' +
+      'Points per position (1-based)=' + JSON.stringify(ptsObj) + '\n' +
+      'Simulate QUALIFYING + RACE for the NEXT EVENT using race_context. ' +
+      'WRITE a PUSH to /stats/race_results with: { "round": <num>, "name": "<track>", "finishers":[{"driver":"<roster>","team":"<team>","position":1,"points":<from table>}, ...] }.\n' +
+      'Keep car attrs 0–100. If crucial data is missing, ask ONE short follow-up in "narration" and set ops empty.\n' +
+      'Example (do not include code fences): ' +
+      '{ "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":1,"name":"Example","finishers":[{"driver":"' +
+      (rosterDrivers[0] || 'Driver A') + '","team":"' + (rosterTeams[0] || 'Team A') + '","position":1,"points":' + (ptsObj[1]||25) + '}]}}]}}' +
       '\n' +
       'game_state_slim=' + JSON.stringify(slim) + '\n' +
       'race_context=' + JSON.stringify(raceSlice);
@@ -293,23 +349,20 @@ async function runRaceSim() {
       })
     });
 
-    // Log HTTP status and raw body (for iPad)
     const raw = await res.text();
     logApiToChat('RACE api/chat status', res.status + (res.ok ? ' OK' : ' ERROR'));
     logApiToChat('RACE api/chat body (first 1200 chars)', raw.slice(0, 1200));
 
     if (!res.ok) {
       thinkingEl.classList.remove('thinking');
-      thinkingEl.textContent = `❌ Chat API HTTP ${res.status}. See debug message above.`;
+      thinkingEl.textContent = `❌ Chat API HTTP ${res.status}.`;
       history.push({ role:'assistant', content: thinkingEl.textContent, time: now() });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
       return;
     }
 
-    // Try parse JSON from raw
     let data = null;
     try { data = JSON.parse(raw); } catch {}
-
     let reply = (data && data.reply) ? data.reply : raw;
 
     // Extract JSON payload from reply (if string-wrapped)
@@ -324,22 +377,20 @@ async function runRaceSim() {
       payload = reply;
     }
 
-    let outText = typeof reply === 'string' ? reply : (payload?.narration || 'No reply.');
+    let outText = cleanNarration(payload?.narration || 'OK');
 
     if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
       const resOps = applyOps(game.state, payload.ops);
       if (resOps.ok) {
+        recomputeAndStoreStandings(game.state);
         try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
-        outText = (payload.narration ? payload.narration + '\n\n' : '') +
-                  `🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (outText || 'Race processed.') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
         tryRenderStandingsTabs();
       } else {
-        outText = (payload.narration ? payload.narration + '\n\n' : '') +
-                  '🤖 Model returned no actionable ops. Tip: ensure it uses {"op":"push","path":"/stats/race_results",...}.';
+        outText = (outText || 'No actionable ops.');
       }
     } else {
-      outText = (payload?.narration ? payload.narration + '\n\n' : '') +
-                '🤖 No ops object detected. The model must output STRICT JSON with {"ops":{"_type":"ccsf_ops_v1","changes":[...]}}.';
+      outText = (outText || 'No structured result. Tap RACE again.');
     }
 
     thinkingEl.classList.remove('thinking');
@@ -355,7 +406,7 @@ async function runRaceSim() {
   }
 }
 
-/* ----------------------- Chat send (general Q&A) ----------------------- */
+/* ----------------------- Chat send (dual-mode: friendly by default) ----------------------- */
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -370,16 +421,22 @@ async function send() {
   const thinkingEl = chatEl.lastElementChild.querySelector('.content');
   thinkingEl.classList.add('thinking');
 
+  const opsMode = isOpsIntent(text);
+
   try {
     const seed = getSeedContext();
-    const systemPrompt =
-      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim. ' +
-      'Read game_state and when the player asks for a decision (rumours, fire, research, TD, penalties, upgrades, race sim), ' +
-      'RETURN STRICT JSON ONLY with two fields: narration (string) and ops (object). ' +
-      'Format:\n' +
-      '{ "narration": "<spicy paddock gossip>", "ops": { "_type": "ccsf_ops_v1", "changes": [ { "op":"inc|set|push", "path": "/teams/<team_id>/car/tyre_degradation", "value": -2 } ] } }\n' +
-      'Rules: use ONLY existing fields; keep numbers sane (0–100 for car attrs); realistic costs/durations; if unsure, ask a one-line follow-up.' +
-      (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)');
+
+    const systemPrompt = opsMode
+      ? (
+          'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
+          'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type": "ccsf_ops_v1", "changes": [ ... ] } }.\n' +
+          'Rules: use ONLY existing fields; car attrs 0–100; realistic costs/durations; if unsure, ask ONE short follow-up in "narration" and set ops empty.' +
+          (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)')
+        )
+      : (
+          'You are DS AI, a cynical meme-y F1 team strategist. Reply as natural text only, 1–4 short sentences. ' +
+          'No code, no JSON, no markdown fences. Be witty but clear.'
+        );
 
     const res = await fetch('api/chat', {
       method: 'POST',
@@ -392,19 +449,31 @@ async function send() {
       })
     });
 
-    // iPad-friendly logs
     const raw = await res.text();
-    logApiToChat('CHAT api/chat status', res.status + (res.ok ? ' OK' : ' ERROR'));
-    logApiToChat('CHAT api/chat body (first 1200 chars)', raw.slice(0, 1200));
+    logApiToChat(opsMode ? 'CHAT(ops) status' : 'CHAT status', res.status + (res.ok?' OK':' ERROR'));
+    logApiToChat(opsMode ? 'CHAT(ops) body' : 'CHAT body', raw.slice(0, 1200));
 
     if (!res.ok) {
       thinkingEl.classList.remove('thinking');
-      thinkingEl.textContent = `❌ Chat API HTTP ${res.status}. See debug message above.`;
+      thinkingEl.textContent = `❌ Chat API HTTP ${res.status}.`;
       history.push({ role:'assistant', content: thinkingEl.textContent, time: now() });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
       return;
     }
 
+    if (!opsMode) {
+      // Friendly mode — just show clean text
+      const data = (() => { try { return JSON.parse(raw); } catch { return null; } })();
+      const reply = (data && data.reply) ? data.reply : raw;
+      const clean = cleanNarration(String(reply));
+      thinkingEl.classList.remove('thinking');
+      thinkingEl.textContent = clean || '…';
+      history.push({ role:'assistant', content: clean, time: now() });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      return;
+    }
+
+    // Ops mode — parse payload and apply
     let data = null;
     try { data = JSON.parse(raw); } catch {}
     let reply = (data && data.reply) ? data.reply : raw;
@@ -420,22 +489,24 @@ async function send() {
       payload = reply;
     }
 
-    let outText = typeof reply === 'string' ? reply : (payload?.narration || 'No reply.');
+    let outText = cleanNarration(payload?.narration || 'Done.');
+
     if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
       const resOps = applyOps(game.state, payload.ops);
       if (resOps.ok) {
+        recomputeAndStoreStandings(game.state);
         try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
-        outText = (payload.narration ? payload.narration + '\n\n' : '') +
-                  `🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (outText || 'OK') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
         tryRenderStandingsTabs();
       } else {
-        outText = payload.narration || outText;
+        outText = outText || 'No actionable ops.';
       }
+    } else {
+      outText = outText || 'No structured result.';
     }
 
     thinkingEl.classList.remove('thinking');
     thinkingEl.textContent = outText;
-
     history.push({ role:'assistant', content: outText, time: now() });
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch (err) {
@@ -626,7 +697,7 @@ function buildTeamStandingsTable(s) {
   return wrapTable('Constructor Standings', tbl, '🏭');
 }
 
-/* ---------- STANDINGS: driver + team (robust) ---------- */
+/* ---------- STANDINGS: driver + team (robust + roster lock option) ---------- */
 function getDriverStandings(s) {
   const direct =
     s?.stats?.driver_standings ||
@@ -678,8 +749,10 @@ function computeStandingsFromResults(s) {
 
   // roster lookups
   const roster = Array.isArray(s?.drivers) ? s.drivers : [];
-  const driverTeamById = new Map(roster.map(d => [String(d.driver_id ?? d.name), d.team || d.constructor || '—']));
-  const driverIdByName = new Map(roster.map(d => [String(d.name), String(d.driver_id ?? d.name)]));
+  const teamByDriverName = new Map(roster.map(d => [String(d.name), d.team || d.constructor || '—']));
+  const teamByDriverId   = new Map(roster.map(d => [String(d.driver_id ?? d.name), d.team || d.constructor || '—']));
+  const driverTeamById   = teamByDriverId; // alias
+  const driverIdByName   = new Map(roster.map(d => [String(d.name), String(d.driver_id ?? d.name)]));
 
   for (const race of results) {
     const list = race?.finishers || race?.classification || race?.results || race?.grid || [];
@@ -697,8 +770,10 @@ function computeStandingsFromResults(s) {
       const key = String(name);
 
       const pos = Number(entry.position ?? entry.pos ?? entry.p ?? (idx + 1));
-      const team = entry.team || entry.constructor ||
-        driverTeamById.get(String(entry.driver_id ?? driverIdByName.get(String(entry.name)) ?? key)) || '—';
+      const explicitTeam = entry.team || entry.constructor || '—';
+      const rosterTeam = teamByDriverName.get(String(entry.name)) ||
+                         teamByDriverId.get(String(entry.driver_id ?? entry.id ?? key)) || '—';
+      const team = FORCE_ROSTER_TEAMS ? (rosterTeam || explicitTeam) : (explicitTeam || rosterTeam);
 
       const pts = Number(entry.points ?? entry.pts ?? ptsMap[pos] ?? 0);
 
@@ -811,17 +886,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   // wire chat
   if (sendBtn) sendBtn.addEventListener('click', send);
   if (inputEl) addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
-  if (clearBtn) clearBtn.addEventListener('click', () => { history = []; localStorage.removeItem(STORAGE_KEY); chatEl.innerHTML = ''; restoreChat(); });
+  if (clearBtn) clearEvent(clearBtn);
+
   restoreChat();
-
-  // wire top control buttons
   wireButtons();
-
-  // inject UI
   injectStandingsTabs();
   injectRaceButton();
 
-  // boot game state (local → bundle → seed)
   const cached = loadLocal();
   if (cached) {
     setGame({
@@ -846,3 +917,12 @@ window.addEventListener('DOMContentLoaded', async () => {
     announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
   }
 });
+
+function clearEvent(btn) {
+  btn.addEventListener('click', () => {
+    history = [];
+    localStorage.removeItem(STORAGE_KEY);
+    chatEl.innerHTML = '';
+    restoreChat();
+  });
+}
