@@ -1,4 +1,4 @@
-// app.js — DS AI Chaos Brain: Live Tabs + One-click RACE + Robust Standings
+// app.js — DS AI Chaos Brain: Live Tabs + One-click RACE + Robust Standings + iPad Debug Logs
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
@@ -81,7 +81,9 @@ function getSeedContext() {
 /* ----------------------- Minimal race context for GPT ----------------------- */
 function buildRaceSliceForPrompt(s) {
   const today = new Date();
-  const next = (s?.calendar || []).find(c => new Date(c.date) >= today) || (s?.calendar || [])[0] || null;
+  const calendar = Array.isArray(s?.calendar) ? s.calendar : [];
+  const next = calendar.find(c => new Date(c.date) >= today) || calendar[0] || null;
+  const safeNext = next || { round: 1, name: 'Test Track', date: '2025-01-01', country: '—', attrs: {} };
 
   const teams = (s?.teams || []).map(t => ({
     id: t.team_id, name: t.team_name,
@@ -105,7 +107,7 @@ function buildRaceSliceForPrompt(s) {
   }));
 
   return {
-    next_race: next ? { round: next.round, name: next.name, date: next.date, country: next.country, attrs: next.attrs } : null,
+    next_race: { round: safeNext.round, name: safeNext.name, date: safeNext.date, country: safeNext.country, attrs: safeNext.attrs },
     teams, drivers,
     tyres: s?.tyres || s?.tires || undefined,
     weather: s?.weather || undefined,
@@ -199,6 +201,16 @@ function ensureStatsScaffold(state) {
   state.stats.race_results = state.stats.race_results || [];
 }
 
+/* ---- Inline debug to chat (iPad-friendly) ---- */
+function logApiToChat(title, info) {
+  try {
+    const pretty = typeof info === 'string' ? info : JSON.stringify(info, null, 2);
+    addMessage('assistant', `🔎 ${title}\n${pretty}`);
+  } catch {
+    addMessage('assistant', `🔎 ${title} (unprintable)`);
+  }
+}
+
 /* ----------------------- Chat (same UI / endpoints) ----------------------- */
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
@@ -259,11 +271,13 @@ async function runRaceSim() {
     const systemPrompt =
       'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
       'Always return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\n' +
-      'Simulate QUALIFYING and RACE for the NEXT EVENT using race_context pace, tyres, weather, and form.\n' +
-      'Write results to /stats/race_results via a push op. Append an object: ' +
-      '{ round, name, finishers:[{driver,team,position,points}] }.\n' +
+      'Simulate QUALIFYING and the RACE for the NEXT EVENT using race_context pace, tyres, weather, and form.\n' +
+      'WRITE RESULTS to /stats/race_results with a PUSH op. Append an object: ' +
+      '{ "round": <number>, "name": "<track>", "finishers":[{"driver":"<name>","team":"<team>","position":1,"points":25}, ...] }.\n' +
       'If you compute updated standings, write arrays to /stats/driver_standings and /stats/constructor_standings.\n' +
       'Keep car attributes within 0–100 when modifying. If crucial data is missing, ask ONE short follow-up in "narration" and output empty ops.\n' +
+      'Example OUTPUT (STRICT JSON):\n' +
+      '{ "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":7,"name":"Montreal","finishers":[{"driver":"A","team":"Alpha","position":1,"points":25}]}}]}}\n' +
       '\n' +
       'game_state_slim=' + JSON.stringify(slim) + '\n' +
       'race_context=' + JSON.stringify(raceSlice);
@@ -271,13 +285,34 @@ async function runRaceSim() {
     const res = await fetch('api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ messages: [ { role:'system', content: systemPrompt } ] })
+      body: JSON.stringify({
+        messages: [
+          { role:'system', content: systemPrompt },
+          { role:'user',   content: 'Simulate qualifying and the race for the next event NOW. Return STRICT JSON only as specified.' }
+        ]
+      })
     });
 
-    const data = await res.json();
-    let reply = data.reply;
+    // Log HTTP status and raw body (for iPad)
+    const raw = await res.text();
+    logApiToChat('RACE api/chat status', res.status + (res.ok ? ' OK' : ' ERROR'));
+    logApiToChat('RACE api/chat body (first 1200 chars)', raw.slice(0, 1200));
 
-    // Parse strict JSON (supports text-wrapped JSON)
+    if (!res.ok) {
+      thinkingEl.classList.remove('thinking');
+      thinkingEl.textContent = `❌ Chat API HTTP ${res.status}. See debug message above.`;
+      history.push({ role:'assistant', content: thinkingEl.textContent, time: now() });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      return;
+    }
+
+    // Try parse JSON from raw
+    let data = null;
+    try { data = JSON.parse(raw); } catch {}
+
+    let reply = (data && data.reply) ? data.reply : raw;
+
+    // Extract JSON payload from reply (if string-wrapped)
     let payload = null;
     if (typeof reply === 'string') {
       const start = reply.indexOf('{');
@@ -289,7 +324,7 @@ async function runRaceSim() {
       payload = reply;
     }
 
-    let outText = reply || 'No reply.';
+    let outText = typeof reply === 'string' ? reply : (payload?.narration || 'No reply.');
 
     if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
       const resOps = applyOps(game.state, payload.ops);
@@ -297,11 +332,14 @@ async function runRaceSim() {
         try { localStorage.setItem('ccsf_state', JSON.stringify(game.state)); } catch {}
         outText = (payload.narration ? payload.narration + '\n\n' : '') +
                   `🧾 Database updated: ${resOps.changed.join(', ')}`;
-        // refresh standings tabs view after race
         tryRenderStandingsTabs();
       } else {
-        outText = payload.narration || outText;
+        outText = (payload.narration ? payload.narration + '\n\n' : '') +
+                  '🤖 Model returned no actionable ops. Tip: ensure it uses {"op":"push","path":"/stats/race_results",...}.';
       }
+    } else {
+      outText = (payload?.narration ? payload.narration + '\n\n' : '') +
+                '🤖 No ops object detected. The model must output STRICT JSON with {"ops":{"_type":"ccsf_ops_v1","changes":[...]}}.';
     }
 
     thinkingEl.classList.remove('thinking');
@@ -311,7 +349,9 @@ async function runRaceSim() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch (err) {
     thinkingEl.classList.remove('thinking');
-    thinkingEl.textContent = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
+    const msg = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
+    thinkingEl.textContent = msg;
+    logApiToChat('RACE exception', msg);
   }
 }
 
@@ -352,8 +392,22 @@ async function send() {
       })
     });
 
-    const data = await res.json();
-    let reply = data.reply;
+    // iPad-friendly logs
+    const raw = await res.text();
+    logApiToChat('CHAT api/chat status', res.status + (res.ok ? ' OK' : ' ERROR'));
+    logApiToChat('CHAT api/chat body (first 1200 chars)', raw.slice(0, 1200));
+
+    if (!res.ok) {
+      thinkingEl.classList.remove('thinking');
+      thinkingEl.textContent = `❌ Chat API HTTP ${res.status}. See debug message above.`;
+      history.push({ role:'assistant', content: thinkingEl.textContent, time: now() });
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+      return;
+    }
+
+    let data = null;
+    try { data = JSON.parse(raw); } catch {}
+    let reply = (data && data.reply) ? data.reply : raw;
 
     let payload = null;
     if (typeof reply === 'string') {
@@ -366,7 +420,7 @@ async function send() {
       payload = reply;
     }
 
-    let outText = reply || 'No reply.';
+    let outText = typeof reply === 'string' ? reply : (payload?.narration || 'No reply.');
     if (payload && payload.ops && payload.ops._type === 'ccsf_ops_v1') {
       const resOps = applyOps(game.state, payload.ops);
       if (resOps.ok) {
@@ -386,7 +440,9 @@ async function send() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
   } catch (err) {
     thinkingEl.classList.remove('thinking');
-    thinkingEl.textContent = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
+    const msg = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
+    thinkingEl.textContent = msg;
+    logApiToChat('CHAT exception', msg);
   }
 }
 
