@@ -1,7 +1,8 @@
-// app.js — Chat chaos brain + LIVE TABS + One-click RACE simulate
+// app.js — DS AI Chaos Brain: Live Tabs + One-click RACE + Robust Standings
+
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
-/* ----------------------- Seed Snapshot (slim context) ----------------------- */
+/* ----------------------- Seed Snapshot (slim context for general Q&A) ----------------------- */
 function getSeedContext() {
   const s = (typeof game?.state !== 'undefined') ? game.state
             : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
@@ -112,7 +113,7 @@ function buildRaceSliceForPrompt(s) {
   };
 }
 
-/* ----------------------- Auto-apply ops (now creates missing paths) ----------------------- */
+/* ----------------------- Auto-apply ops (creates missing paths) ----------------------- */
 // Supports { op: "set"|"inc"|"push", path: "/a/b/c" or "a.b.c", value: any }
 function applyOps(state, ops) {
   const changedPaths = [];
@@ -198,7 +199,7 @@ function ensureStatsScaffold(state) {
   state.stats.race_results = state.stats.race_results || [];
 }
 
-/* ----------------------- Chat (same UI) ----------------------- */
+/* ----------------------- Chat (same UI / endpoints) ----------------------- */
 const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
 let history = [];
@@ -270,11 +271,7 @@ async function runRaceSim() {
     const res = await fetch('api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role:'system', content: systemPrompt }
-        ]
-      })
+      body: JSON.stringify({ messages: [ { role:'system', content: systemPrompt } ] })
     });
 
     const data = await res.json();
@@ -318,7 +315,7 @@ async function runRaceSim() {
   }
 }
 
-/* ----------------------- Chat send (general Q&A stays as-is) ----------------------- */
+/* ----------------------- Chat send (general Q&A) ----------------------- */
 async function send() {
   const text = inputEl.value.trim();
   if (!text) return;
@@ -573,67 +570,136 @@ function buildTeamStandingsTable(s) {
   return wrapTable('Constructor Standings', tbl, '🏭');
 }
 
-/* ---------- Data sources (stats → standings; fallback compute) ---------- */
+/* ---------- STANDINGS: driver + team (robust) ---------- */
 function getDriverStandings(s) {
-  if (s?.stats?.driver_standings?.length) {
-    return s.stats.driver_standings
+  const direct =
+    s?.stats?.driver_standings ||
+    s?.stats?.drivers_standings ||
+    s?.stats?.standings?.drivers ||
+    [];
+
+  if (Array.isArray(direct) && direct.length) {
+    return direct
       .map(x => ({
-        driver: x.driver || x.name || x.driver_name,
-        team: x.team,
-        points: Number(x.points ?? 0),
+        driver: x.driver || x.name || x.driver_name || x.id || x.driver_id || '—',
+        team: x.team || x.constructor || x.squad || '—',
+        points: Number(x.points ?? x.pts ?? 0),
         wins: Number(x.wins ?? 0),
-        podiums: Number(x.podiums ?? 0),
+        podiums: Number(x.podiums ?? x.pods ?? 0),
       }))
-      .sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+      .sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
   }
   return computeStandingsFromResults(s).drivers;
 }
 
 function getTeamStandings(s) {
-  if (s?.stats?.constructor_standings?.length) {
-    return s.stats.constructor_standings
+  const direct =
+    s?.stats?.constructor_standings ||
+    s?.stats?.team_standings ||
+    s?.stats?.standings?.teams ||
+    [];
+
+  if (Array.isArray(direct) && direct.length) {
+    return direct
       .map(x => ({
-        team: x.team || x.name,
-        points: Number(x.points ?? 0),
+        team: x.team || x.name || x.constructor || '—',
+        points: Number(x.points ?? x.pts ?? 0),
         wins: Number(x.wins ?? 0),
-        podiums: Number(x.podiums ?? 0),
+        podiums: Number(x.podiums ?? x.pods ?? 0),
       }))
-      .sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+      .sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
   }
   return computeStandingsFromResults(s).teams;
 }
 
-/* ---------- Fallback calculator (from race_results + points_system) ---------- */
+/* ---------- Recompute from results (tolerant to shapes) ---------- */
 function computeStandingsFromResults(s) {
-  const results = s?.stats?.race_results || [];
-  const ptsMap = s?.regulations?.points_system || [25,18,15,12,10,8,6,4,2,1];
+  const results = Array.isArray(s?.stats?.race_results) ? s.stats.race_results : [];
+  const ptsMap = normalizePointsSystem(s?.regulations?.points_system);
+
   const drv = new Map();
   const tm  = new Map();
-  const driverTeamLookup = new Map((s.drivers || []).map(d => [d.name, d.team]));
+
+  // roster lookups
+  const roster = Array.isArray(s?.drivers) ? s.drivers : [];
+  const driverTeamById = new Map(roster.map(d => [String(d.driver_id ?? d.name), d.team || d.constructor || '—']));
+  const driverIdByName = new Map(roster.map(d => [String(d.name), String(d.driver_id ?? d.name)]));
 
   for (const race of results) {
-    const finishers = race?.finishers || race?.classification || race?.results || [];
-    finishers.forEach((entry, idx) => {
-      const name = entry.driver || entry.name;
-      if (!name) return;
-      const team = entry.team || driverTeamLookup.get(name) || '—';
-      const pts = Number(entry.points ?? ptsMap[idx] ?? 0);
-      const isPod = idx <= 2 ? 1 : 0;
-      const isWin = idx === 0 ? 1 : 0;
+    const list = race?.finishers || race?.classification || race?.results || race?.grid || [];
+    if (!Array.isArray(list)) continue;
 
-      const drow = drv.get(name) || { driver:name, team, points:0, wins:0, podiums:0 };
-      drow.points += pts; drow.wins += isWin; drow.podiums += isPod; drow.team = team;
-      drv.set(name, drow);
+    const sorted = list.slice().sort((a,b) => {
+      const pa = Number(a.position ?? a.pos ?? a.p) || 9999;
+      const pb = Number(b.position ?? b.pos ?? b.p) || 9999;
+      return pa - pb;
+    });
+
+    sorted.forEach((entry, idx) => {
+      const name = entry.driver || entry.name || entry.driver_name || entry.id || entry.driver_id;
+      if (!name) return;
+      const key = String(name);
+
+      const pos = Number(entry.position ?? entry.pos ?? entry.p ?? (idx + 1));
+      const team = entry.team || entry.constructor ||
+        driverTeamById.get(String(entry.driver_id ?? driverIdByName.get(String(entry.name)) ?? key)) || '—';
+
+      const pts = Number(entry.points ?? entry.pts ?? ptsMap[pos] ?? 0);
+
+      const drow = drv.get(key) || { driver:key, team, points:0, wins:0, podiums:0 };
+      drow.points += pts;
+      if (pos === 1) drow.wins += 1;
+      if (pos <= 3) drow.podiums += 1;
+      drow.team = team;
+      drv.set(key, drow);
 
       const trow = tm.get(team) || { team, points:0, wins:0, podiums:0 };
-      trow.points += pts; trow.wins += isWin; trow.podiums += isPod;
+      trow.points += pts;
+      if (pos === 1) trow.wins += 1;
+      if (pos <= 3) trow.podiums += 1;
       tm.set(team, trow);
     });
   }
 
-  const drivers = [...drv.values()].sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
-  const teams   = [...tm.values()].sort((a,b) => b.points - a.points || (b.wins||0)-(a.wins||0));
+  const drivers = [...drv.values()]
+    .map(r => {
+      const pretty = roster.find(d =>
+        String(d.driver_id) === String(r.driver) || String(d.name) === String(r.driver)
+      );
+      return { ...r, driver: pretty?.name || r.driver, team: pretty?.team || r.team };
+    })
+    .sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
+
+  const teams   = [...tm.values()]
+    .sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
+
   return { drivers, teams };
+}
+
+/* ---------- points system can be array OR object ---------- */
+function normalizePointsSystem(ps) {
+  // Default F1 top 10
+  const fallback = { 1:25, 2:18, 3:15, 4:12, 5:10, 6:8, 7:6, 8:4, 9:2, 10:1 };
+  if (!ps) return fallback;
+
+  if (Array.isArray(ps)) {
+    const obj = {};
+    for (let i = 0; i < ps.length; i++) obj[i+1] = Number(ps[i] || 0); // index 0 → P1
+    return Object.keys(obj).length ? obj : fallback;
+  }
+
+  if (typeof ps === 'object') {
+    const obj = {};
+    for (const k of Object.keys(ps)) obj[Number(k)] = Number(ps[k] || 0);
+    // handle keys like "P1", "p2", etc.
+    for (const k of Object.keys(ps)) {
+      const m = /^p(\d+)$/i.exec(k);
+      if (m) obj[Number(m[1])] = Number(ps[k] || 0);
+    }
+    return Object.keys(obj).length ? obj : fallback;
+  }
+
+  return fallback;
 }
 
 /* ---------- tiny table helpers ---------- */
