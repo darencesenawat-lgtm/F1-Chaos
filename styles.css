@@ -18,31 +18,4 @@ main#chat{ flex:1; overflow:auto; padding:1rem; display:flex; flex-direction:col
 #send{ padding:.6rem .9rem; border-radius:10px; border:1px solid #2a2c34; background:var(--accent); color:white; font-weight:600; cursor:pointer; }
 .thinking{ color:var(--muted); font-style:italic; }
 .time{ display:block; color:var(--muted); font-size:.75rem; margin-top:.4rem; }
-
-main#chat {
-  position: fixed;
-  left: 240px;
-  bottom: 60px; /* leave space for composer */
-  width: calc(100vw - 260px);
-  max-width: 600px;
-  z-index: 9999;
-  background: #18181b;
-  border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-  padding: 16px;
-  overflow-y: auto;
-}
-
-.composer {
-  position: fixed;
-  left: 240px;
-  bottom: 0;
-  width: calc(100vw - 260px);
-  max-width: 600px;
-  z-index: 9999;
-  background: linear-gradient(0deg,#0b0c0f 0,#0b0c0fef 70%,#0b0c0f00);
-  border-top: 1px solid #1a1b20;
-  padding: .75rem;
-  display: flex;
-  gap: .5rem;
-}
+;
