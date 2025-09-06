@@ -607,6 +607,85 @@ function getTeamStandings(s) {
   return computeStandingsFromResults(s).teams;
 }
 
+/* ----------------------- SIDEBAR Dashboard ----------------------- */
+function injectSidebar() {
+  if (document.getElementById('dashboard-sidebar')) return;
+
+  const sidebar = document.createElement('div');
+  sidebar.id = 'dashboard-sidebar';
+  sidebar.style.cssText = `
+    position:fixed;
+    top:0;
+    left:0;
+    width:220px;
+    height:100vh;
+    background:#17171b;
+    color:#eaeaea;
+    border-right:1px solid #23232b;
+    box-shadow:2px 0 18px rgba(0,0,0,.08);
+    z-index:9997;
+    padding:24px 16px 16px 14px;
+    font:15px/1.5 system-ui;
+    display:flex;
+    flex-direction:column;
+    gap:24px;
+  `;
+
+  sidebar.innerHTML = `
+    <div style="font-weight:700;font-size:1.3em;margin-bottom:10px;letter-spacing:.5px;">
+      🏎️ F1 Chaos Dashboard
+    </div>
+    <nav style="display:flex;flex-direction:column;gap:10px;">
+      <button id="sb-drivers" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Drivers</button>
+      <button id="sb-teams" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Teams</button>
+      <button id="sb-standings" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Standings</button>
+      <button id="sb-calendar" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Calendar</button>
+    </nav>
+    <div id="sb-season-info" style="margin-top:18px;font-size:.98em;color:#b0b0b7;">
+      <!-- Season info will be injected here -->
+    </div>
+  `;
+
+  document.body.appendChild(sidebar);
+
+  // Example: update season info when game state is available
+  function updateSeasonInfo() {
+    const el = document.getElementById('sb-season-info');
+    if (!el || !window.game || !game.state) return;
+    const m = game.state.meta || {};
+    el.innerHTML = `
+      <div><strong>Season:</strong> ${m.season ?? "?"}</div>
+      <div><strong>Timeline:</strong> ${m.timeline ?? "?"}</div>
+      <div><strong>Last Round:</strong> ${m.last_completed_round ?? "0"}</div>
+    `;
+  }
+
+  updateSeasonInfo();
+  // Update info when announcing stage
+  const origAnnounceStage = window.announceStage;
+  window.announceStage = function(state) {
+    origAnnounceStage(state);
+    updateSeasonInfo();
+  };
+
+  // Example navigation: clicking sidebar buttons could show relevant tabs
+  document.getElementById('sb-drivers').onclick = () => {
+    injectStandingsTabs();
+    document.querySelector('#ccsf_tabs [data-id="drivers"]')?.click();
+  };
+  document.getElementById('sb-teams').onclick = () => {
+    injectStandingsTabs();
+    document.querySelector('#ccsf_tabs [data-id="tm_std"]')?.click();
+  };
+  document.getElementById('sb-standings').onclick = () => {
+    injectStandingsTabs();
+    document.querySelector('#ccsf_tabs [data-id="drv_std"]')?.click();
+  };
+  document.getElementById('sb-calendar').onclick = () => {
+    announce('🗓️ Calendar view coming soon!');
+    // You could implement a calendar panel here if you want
+  };
+
 /* ----------------------- RACE button ----------------------- */
 function injectRaceButton() {
   if (document.getElementById('race-btn')) return;
@@ -920,6 +999,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   wireButtons();
   injectStandingsTabs();
   injectRaceButton();
+  injectSidebar();
 
   const cached = loadLocal();
   if (cached) {
