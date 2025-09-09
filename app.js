@@ -674,6 +674,7 @@ function injectSidebar() {
   document.getElementById('sb-calendar').onclick = () => {
     announce('🗓️ Calendar view coming soon!');
   };
+}
   document.getElementById('sb-refresh').onclick = () => updateSidebar(game?.state);
 
   // initial paint
