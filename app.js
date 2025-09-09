@@ -674,7 +674,7 @@ function injectSidebar() {
   document.getElementById('sb-calendar').onclick = () => {
     announce('🗓️ Calendar view coming soon!');
   };
-}
+
   document.getElementById('sb-refresh').onclick = () => updateSidebar(game?.state);
 
   // initial paint
@@ -1068,4 +1068,4 @@ window.addEventListener('DOMContentLoaded', async () => {
     console.error('BOOT ERROR:', err);
     announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
   }
-});`   ````         
+});
