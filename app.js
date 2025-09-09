@@ -393,6 +393,7 @@ function onOpsApplied(state) {
   try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {}
   tryRenderStandingsTabs();
   announceStage(state);
+  updateSidebar(state); // <-- keep the sidebar honest
 }
 
 /* ----------------------- Sanity check & repair on boot/resume ----------------------- */
@@ -607,7 +608,7 @@ function getTeamStandings(s) {
   return computeStandingsFromResults(s).teams;
 }
 
-/* ----------------------- SIDEBAR Dashboard ----------------------- */
+/* ----------------------- SIDEBAR Dashboard (with Next Race) ----------------------- */
 function injectSidebar() {
   if (document.getElementById('dashboard-sidebar')) return;
 
@@ -628,47 +629,36 @@ function injectSidebar() {
     font:15px/1.5 system-ui;
     display:flex;
     flex-direction:column;
-    gap:24px;
+    gap:18px;
   `;
 
   sidebar.innerHTML = `
-    <div style="font-weight:700;font-size:1.3em;margin-bottom:10px;letter-spacing:.5px;">
-      🏎️ F1 Chaos Dashboard
+    <div style="font-weight:700;font-size:1.2em;letter-spacing:.5px;">🏎️ F1 Chaos Dashboard</div>
+
+    <div id="sb-next" style="background:#111216;border:1px solid #262833;border-radius:10px;padding:10px 10px 8px;">
+      <div style="font:600 12px system-ui; color:#bdbdcc; margin-bottom:4px;">📅 Next Race</div>
+      <div id="sb-next-title" style="font:700 13px/1.25 system-ui;">—</div>
+      <div id="sb-next-meta"  style="color:#9ca0ad; font:12px/1.25 system-ui; margin-top:2px;">—</div>
     </div>
-    <nav style="display:flex;flex-direction:column;gap:10px;">
-      <button id="sb-drivers" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Drivers</button>
-      <button id="sb-teams" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Teams</button>
+
+    <div id="sb-last" style="color:#b0b0b7; font:12px/1.25 system-ui;">Last: none (preseason)</div>
+
+    <nav style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+      <button id="sb-drivers"   style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Drivers</button>
+      <button id="sb-teams"     style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Teams</button>
       <button id="sb-standings" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Standings</button>
-      <button id="sb-calendar" style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Calendar</button>
+      <button id="sb-calendar"  style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Calendar</button>
+      <button id="sb-refresh"   style="margin-top:6px;background:#1f1f1f;border:1px solid #333;color:#ddd;padding:4px 8px;border-radius:6px;cursor:pointer;">↻ Refresh</button>
     </nav>
-    <div id="sb-season-info" style="margin-top:18px;font-size:.98em;color:#b0b0b7;">
+
+    <div id="sb-season-info" style="margin-top:4px;font-size:.96em;color:#b0b0b7;">
       <!-- Season info will be injected here -->
     </div>
   `;
 
   document.body.appendChild(sidebar);
 
-  // Example: update season info when game state is available
-  function updateSeasonInfo() {
-    const el = document.getElementById('sb-season-info');
-    if (!el || !window.game || !game.state) return;
-    const m = game.state.meta || {};
-    el.innerHTML = `
-      <div><strong>Season:</strong> ${m.season ?? "?"}</div>
-      <div><strong>Timeline:</strong> ${m.timeline ?? "?"}</div>
-      <div><strong>Last Round:</strong> ${m.last_completed_round ?? "0"}</div>
-    `;
-  }
-
-  updateSeasonInfo();
-  // Update info when announcing stage
-  const origAnnounceStage = window.announceStage;
-  window.announceStage = function(state) {
-    origAnnounceStage(state);
-    updateSeasonInfo();
-  };
-
-  // Example navigation: clicking sidebar buttons could show relevant tabs
+  // nav buttons
   document.getElementById('sb-drivers').onclick = () => {
     injectStandingsTabs();
     document.querySelector('#ccsf_tabs [data-id="drivers"]')?.click();
@@ -683,8 +673,50 @@ function injectSidebar() {
   };
   document.getElementById('sb-calendar').onclick = () => {
     announce('🗓️ Calendar view coming soon!');
-    // You could implement a calendar panel here if you want
   };
+  document.getElementById('sb-refresh').onclick = () => updateSidebar(game?.state);
+
+  // initial paint
+  updateSidebar(game?.state);
+}
+
+function updateSidebar(state) {
+  const seasonEl = document.getElementById('sb-season-info');
+  const nextTitle = document.getElementById('sb-next-title');
+  const nextMeta  = document.getElementById('sb-next-meta');
+  const lastEl    = document.getElementById('sb-last');
+
+  if (!seasonEl || !nextTitle || !nextMeta || !lastEl) return;
+
+  if (!state) {
+    seasonEl.innerHTML = `<div><strong>Season:</strong> —</div><div><strong>Timeline:</strong> —</div><div><strong>Last Round:</strong> —</div>`;
+    nextTitle.textContent = '—';
+    nextMeta.textContent = '—';
+    lastEl.textContent = 'Last: none';
+    return;
+  }
+
+  const m = state.meta || {};
+  seasonEl.innerHTML = `
+    <div><strong>Season:</strong> ${m.season ?? "?"}</div>
+    <div><strong>Timeline:</strong> ${m.timeline ?? "?"}</div>
+    <div><strong>Last Round:</strong> ${m.last_completed_round ?? 0}</div>
+  `;
+
+  const next = nextRaceByRound(state);
+  if (next) {
+    nextTitle.textContent = `Round ${next.round} — ${next.name}`;
+    const when = next.date ? new Date(next.date).toDateString() : '';
+    nextMeta.textContent = `${when}${next.country ? ` • ${next.country}` : ''}`;
+  } else {
+    nextTitle.textContent = 'Season complete';
+    nextMeta.textContent = '';
+  }
+
+  const rr = Array.isArray(state?.stats?.race_results) ? state.stats.race_results : [];
+  const last = rr.at(-1);
+  lastEl.textContent = last ? `Last: Round ${last.round} — ${last.name}` : 'Last: none (preseason)';
+}
 
 /* ----------------------- RACE button ----------------------- */
 function injectRaceButton() {
@@ -925,6 +957,7 @@ function wireButtons() {
         saveLocal(game.state);
         announceStage(game.state);
         tryRenderStandingsTabs();
+        updateSidebar(game.state);
       } catch (e) {
         console.error(e);
         announce('⚠️ Could not load seed/. Check seed/manifest.json.');
@@ -947,6 +980,7 @@ function wireButtons() {
         saveLocal(game.state);
         announceStage(game.state);
         tryRenderStandingsTabs();
+        updateSidebar(game.state);
       } catch (err) {
         console.error(err);
         announce('❌ Invalid or corrupted save file.');
@@ -978,6 +1012,7 @@ function wireButtons() {
       localStorage.removeItem('ccsf_state');
       announce('🗑️ Local save cleared.');
       tryRenderStandingsTabs();
+      updateSidebar(null);
     });
   }
 }
@@ -1009,6 +1044,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     announce('♻️ Resumed from local save.');
     announceStage(game.state);
     tryRenderStandingsTabs();
+    updateSidebar(game.state);
     return;
   }
 
@@ -1027,8 +1063,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     saveLocal(game.state);
     announceStage(game.state);
     tryRenderStandingsTabs();
+    updateSidebar(game.state);
   } catch (err) {
     console.error('BOOT ERROR:', err);
     announce('💥 Boot failed. Check seed/manifest.json and loader.js path.');
   }
-});
+});`   ````         
