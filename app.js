@@ -679,7 +679,7 @@ function injectSidebar() {
 
   // initial paint
   updateSidebar(game?.state);
-
+}
 function updateSidebar(state) {
   const seasonEl = document.getElementById('sb-season-info');
   const nextTitle = document.getElementById('sb-next-title');
