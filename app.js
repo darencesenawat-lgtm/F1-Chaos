@@ -657,6 +657,16 @@ function injectSidebar() {
   `;
 
   document.body.appendChild(sidebar);
+   
+     // shift chat UI to the right so it isn't hidden under the sidebar
+  const chatRoot = document.getElementById('chat');
+  if (chatRoot) {
+    chatRoot.style.marginLeft = '220px';
+  }
+  const inputBox = document.getElementById('input');
+  if (inputBox) {
+    inputBox.style.marginLeft = '220px';
+  }
 
   // nav buttons
   document.getElementById('sb-drivers').onclick = () => {
