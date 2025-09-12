@@ -1,6 +1,7 @@
-// app.js — DS AI Chat-First Build with Contract Guards
-// Friendly chat by default, strict ops only when needed. Round-based season flow.
-// No date shenanigans. Constructors fixed via roster-normalized teams.
+
+// app.js — DS AI Chat-First Build (Always-JSON, Scene-leading) — patched
+// Makes every reply JSON with narration + ops; if no concrete ops, logs /events entry.
+// Preserves race sim & standings; sidebar no longer overlaps chat.
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
@@ -8,27 +9,22 @@ import { bootGame, loadGame, exportBundle } from './loader.js';
    🔒 GAME CONTRACT (Do Not Break)
    1) New game must start at: season=2025, timeline='preseason', last_completed_round=0
    2) Next race chosen by round > last_completed_round (ignore real-world dates)
-   3) Chat is FRIENDLY by default; OPS mode only when intent needs state changes
+   3) Chat ALWAYS returns JSON: { narration, ops }, lead the scene with 1 follow-up if open
    4) After any OPS that modify results, recompute & store driver/constructor standings
-   5) Team names in standings must map to roster teams (normalize/force mapping)
+   5) Team names in standings map to roster teams (normalize/force mapping)
    6) On boot/resume, announce current stage: `${season} — ${timeline} (last_completed_round=N)`
    7) Debug logs OFF by default
-   If any fail, fail loudly in UI and auto-repair where possible.
    ──────────────────────────────────────────────────────────────────────────── */
 
 const CFG = {
   DEBUG: false,
-  FRIENDLY_CHAT_DEFAULT: true,
-  REQUIRE_STRICT_JSON_IN_OPS: true,
   START_SEASON: 2025,
   START_TIMELINE: 'preseason',
   START_ROUND: 0,
   FORCE_ROSTER_TEAMS: true,   // standings use roster mapping
 };
 
-/* ----------------------- Globals & helpers ----------------------- */
 let game = null;
-
 function setGame(newGame) { game = newGame; }
 function saveLocal(state) { try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {} }
 function loadLocal() {
@@ -61,7 +57,7 @@ function announceStage(state) {
   announce(`📅 ${m.season ?? '?'} — ${m.timeline ?? '?'} (last_completed_round: ${m.last_completed_round ?? 0})`);
 }
 
-/* ---- Debug to chat (iPad-friendly) ---- */
+/* ---- Debug to chat ---- */
 function logApiToChat(title, info) {
   if (!CFG.DEBUG) return;
   try {
@@ -78,7 +74,7 @@ function getSeedContext() {
             : JSON.parse(localStorage.getItem('ccsf_state') || 'null');
   if (!s) return null;
 
-  const pickAttrs = (obj, keys) => {
+  const pick = (obj, keys) => {
     if (!obj) return undefined; const out = {};
     for (const k of keys) if (k in obj) out[k] = obj[k];
     return Object.keys(out).length ? out : undefined;
@@ -102,17 +98,17 @@ function getSeedContext() {
 
   const principals = (s.principals || []).map(p => ({
     id: p.tp_id, name: p.name, team: p.team,
-    attrs: pickAttrs(p.attrs, ['leadership','politics','media','dev_focus','risk'])
+    attrs: pick(p.attrs, ['leadership','politics','media','dev_focus','risk'])
   }));
 
   const engineers = (s.engineers || []).map(e => ({
     id: e.re_id, name: e.name, team: e.team, driver: e.driver,
-    attrs: pickAttrs(e.attrs, ['tyre_management','racecraft','strategy','comms'])
+    attrs: pick(e.attrs, ['tyre_management','racecraft','strategy','comms'])
   }));
 
   const calendar = (s.calendar || []).map(c => ({
     round: c.round, name: c.name, date: c.date, country: c.country,
-    attrs: pickAttrs(c.attrs, ['downforce','tyre_wear','brake_severity','power_sensitivity'])
+    attrs: pick(c.attrs, ['downforce','tyre_wear','brake_severity','power_sensitivity'])
   }));
 
   const rumours = (s.rumours || [])
@@ -120,7 +116,7 @@ function getSeedContext() {
     .slice(0, 12)
     .map(r => ({ id: r.rumour_id, category: r.category, status: r.status, impact: r.impact, content: r.content }));
 
-  const regs = s.regulations ? pickAttrs(s.regulations, [
+  const regs = s.regulations ? pick(s.regulations, [
     'budget_cap_usd','wind_tunnel_hours_base','points_system','penalties_policy'
   ]) : undefined;
 
@@ -140,7 +136,7 @@ function getSeedContext() {
   };
 }
 
-/* ----------------------- Round-based next race (ignore dates) ----------------------- */
+/* ----------------------- Next race by round ----------------------- */
 function nextRaceByRound(state) {
   const cal = Array.isArray(state?.calendar) ? state.calendar : [];
   const rr  = Array.isArray(state?.stats?.race_results) ? state.stats.race_results : [];
@@ -190,44 +186,50 @@ function buildRaceSliceForPrompt(s) {
 /* ----------------------- Clean narration ----------------------- */
 function cleanNarration(s) {
   if (!s) return '';
-  return String(s).replace(/```[\s\S]*?```/g, '').replace(/`/g, '').trim();
+  return String(s).replace(/```[\\s\\S]*?```/g, '').replace(/`/g, '').trim();
 }
 
-/* ----------------------- Intent: when do we need ops? ----------------------- */
-function isOpsIntent(text) {
-  if (!text) return false;
-  const t = text.toLowerCase();
-  return /\b(sim|simulate|race|quali|qualifying|grand prix|gp|upgrade|develop|wind tunnel|research|engine|contract|sign|hire|fire|penalty|penalties|td|technical directive|standings|apply|push|ops)\b/.test(t)
-       || t.startsWith('/ops')
-       || t.endsWith('!ops');
-}
-
-/* ----------------------- Validate payload from model ----------------------- */
+/* ----------------------- Validate payload ----------------------- */
 function validateOpsPayload(payload) {
   if (!payload || typeof payload !== 'object') return { ok:false, reason:'no-payload' };
   if (!('narration' in payload)) return { ok:false, reason:'no-narration' };
   const ops = payload.ops;
-  if (!ops) return { ok:true, ops: null }; // narration-only is fine in friendly mode
+  if (!ops) return { ok:true, ops: null };
   if (ops._type !== 'ccsf_ops_v1' || !Array.isArray(ops.changes)) {
     return { ok:false, reason:'bad-ops-shape' };
   }
   return { ok:true, ops };
 }
 
-/* ----------------------- Ops applier ----------------------- */
-// Supports { op: "set"|"inc"|"push", path: "/a/b/c" or "a.b.c", value: any }
+/* ----------------------- Always write a breadcrumb (/events) ----------------------- */
+function mkEventOps(userText, category = 'scene', status = 'noted') {
+  const id = Date.now();
+  return {
+    _type: 'ccsf_ops_v1',
+    changes: [{
+      op: 'push',
+      path: '/events',
+      value: {
+        id,
+        type: category,          // 'scene' | 'event' | 'media' | ...
+        status,                  // 'noted' | 'planned' | 'confirmed'
+        summary: String(userText || '').slice(0, 300)
+      }
+    }]
+  };
+}
+
+/* ----------------------- Apply ops ----------------------- */
 function applyOps(state, ops) {
   const changedPaths = [];
   if (!ops || ops._type !== 'ccsf_ops_v1' || !Array.isArray(ops.changes)) {
     return { ok: false, changed: changedPaths, reason: 'no-ops' };
   }
-
   const toKeys = (path) => {
     if (!path) return [];
     const p = path.startsWith('/') ? path.slice(1) : path.replaceAll('.', '/');
     return p.split('/').filter(Boolean);
   };
-
   const ensureRef = (root, keys) => {
     let obj = root;
     for (let i = 0; i < keys.length - 1; i++) {
@@ -237,17 +239,14 @@ function applyOps(state, ops) {
     }
     return [obj, keys[keys.length - 1]];
   };
-
   const clampIfCarAttr = (path, v) => {
     if (typeof v !== 'number') return v;
     return path.includes('/car/') ? Math.max(0, Math.min(100, v)) : v;
   };
-
   for (const c of ops.changes) {
     const keys = toKeys(c.path);
     const [obj, key] = ensureRef(state, keys);
     if (!obj || key == null) continue;
-
     if (c.op === 'set') {
       obj[key] = clampIfCarAttr(c.path, c.value);
       changedPaths.push(c.path);
@@ -264,7 +263,7 @@ function applyOps(state, ops) {
   return { ok: changedPaths.length > 0, changed: changedPaths };
 }
 
-/* ----------------------- Standings recompute (with roster-normalized teams) ----------------------- */
+/* ----------------------- Standings recompute ----------------------- */
 function normalizePointsSystem(ps) {
   const fallback = { 1:25, 2:18, 3:15, 4:12, 5:10, 6:8, 7:6, 8:4, 9:2, 10:1 };
   if (!ps) return fallback;
@@ -279,14 +278,10 @@ function normalizePointsSystem(ps) {
   }
   return fallback;
 }
-
 function computeStandingsFromResults(s) {
   const results = Array.isArray(s?.stats?.race_results) ? s.stats.race_results : [];
   const ptsMap = normalizePointsSystem(s?.regulations?.points_system);
-
-  const drv = new Map();
-  const tm  = new Map();
-
+  const drv = new Map(); const tm  = new Map();
   const roster = Array.isArray(s?.drivers) ? s.drivers : [];
   const rosterTeams = Array.isArray(s?.teams) ? s.teams.map(t => t.team_name || t.name) : [];
   const teamByDriverName = new Map(roster.map(d => [String(d.name), d.team || d.constructor || '—']));
@@ -295,9 +290,7 @@ function computeStandingsFromResults(s) {
   const tokenize = (name) => String(name || '').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim().split(' ').filter(Boolean);
   const normTeam = (name) => {
     if (!name) return '—';
-    // exact match first
     for (const t of rosterTeams) if (String(t).toLowerCase() === String(name).toLowerCase()) return t;
-    // fuzzy token overlap
     const nToks = tokenize(name);
     let best = null, bestScore = 0;
     for (const t of rosterTeams) {
@@ -310,18 +303,15 @@ function computeStandingsFromResults(s) {
   for (const race of results) {
     const list = race?.finishers || race?.classification || race?.results || race?.grid || [];
     if (!Array.isArray(list)) continue;
-
     const sorted = list.slice().sort((a,b) => {
       const pa = Number(a.position ?? a.pos ?? a.p) || 9999;
       const pb = Number(b.position ?? b.pos ?? b.p) || 9999;
       return pa - pb;
     });
-
     sorted.forEach((entry, idx) => {
       const name = entry.driver || entry.name || entry.driver_name || entry.id || entry.driver_id;
       if (!name) return;
       const key = String(name);
-
       const pos = Number(entry.position ?? entry.pos ?? entry.p ?? (idx + 1));
       const explicitTeam = normTeam(entry.team || entry.constructor || '—');
       const rosterTeam = normTeam(
@@ -329,21 +319,12 @@ function computeStandingsFromResults(s) {
         teamByDriverId.get(String(entry.driver_id ?? entry.id ?? key)) || explicitTeam
       );
       const team = CFG.FORCE_ROSTER_TEAMS ? (rosterTeam || explicitTeam) : (explicitTeam || rosterTeam);
-
       const pts = Number(entry.points ?? entry.pts ?? ptsMap[pos] ?? 0);
 
       const drow = drv.get(key) || { driver:key, team, points:0, wins:0, podiums:0 };
-      drow.points += pts;
-      if (pos === 1) drow.wins += 1;
-      if (pos <= 3) drow.podiums += 1;
-      drow.team = team;
-      drv.set(key, drow);
-
+      drow.points += pts; if (pos === 1) drow.wins += 1; if (pos <= 3) drow.podiums += 1; drow.team = team; drv.set(key, drow);
       const trow = tm.get(team) || { team, points:0, wins:0, podiums:0 };
-      trow.points += pts;
-      if (pos === 1) trow.wins += 1;
-      if (pos <= 3) trow.podiums += 1;
-      tm.set(team, trow);
+      trow.points += pts; if (pos === 1) trow.wins += 1; if (pos <= 3) trow.podiums += 1; tm.set(team, trow);
     });
   }
 
@@ -359,7 +340,6 @@ function computeStandingsFromResults(s) {
 
   return { drivers, teams };
 }
-
 function recomputeAndStoreStandings(state) {
   try {
     const { drivers, teams } = computeStandingsFromResults(state);
@@ -371,15 +351,9 @@ function recomputeAndStoreStandings(state) {
       team: r.team, points: r.points, wins: r.wins||0, podiums: r.podiums||0
     }));
     return true;
-  } catch (e) {
-    console.error('standings recompute failed', e);
-    return false;
-  }
+  } catch (e) { console.error('standings recompute failed', e); return false; }
 }
-
-/* ----------------------- After ops succeed: advance + recompute + announce ----------------------- */
 function onOpsApplied(state) {
-  // advance pointer
   const rr = Array.isArray(state?.stats?.race_results) ? state.stats.race_results : [];
   const latestRound = rr.length ? Number(rr[rr.length - 1]?.round || 0) : 0;
   state.meta = state.meta || {};
@@ -387,29 +361,23 @@ function onOpsApplied(state) {
     state.meta.last_completed_round = latestRound;
     if (state.meta.timeline === 'preseason' && latestRound > 0) state.meta.timeline = 'inseason';
   }
-  // recompute standings
   recomputeAndStoreStandings(state);
-  // persist + UI refresh
   try { localStorage.setItem('ccsf_state', JSON.stringify(state)); } catch {}
   tryRenderStandingsTabs();
   announceStage(state);
-  updateSidebar(state); // <-- keep the sidebar honest
+  updateSidebar(state);
 }
-
-/* ----------------------- Sanity check & repair on boot/resume ----------------------- */
 function sanityCheckAndRepair(state) {
   let warnings = [];
   state.meta = state.meta || {};
   if (state.meta.season == null) { state.meta.season = CFG.START_SEASON; warnings.push('season->defaulted'); }
   if (!state.meta.timeline) { state.meta.timeline = CFG.START_TIMELINE; warnings.push('timeline->defaulted'); }
   if (state.meta.last_completed_round == null) { state.meta.last_completed_round = CFG.START_ROUND; warnings.push('pointer->defaulted'); }
-
   state.stats = state.stats || {};
   if (!Array.isArray(state.stats.race_results)) state.stats.race_results = [];
   const needDrivers = !Array.isArray(state.stats.driver_standings) || !state.stats.driver_standings.length;
   const needTeams   = !Array.isArray(state.stats.constructor_standings) || !state.stats.constructor_standings.length;
   if (needDrivers || needTeams) { recomputeAndStoreStandings(state); warnings.push('standings->recomputed'); }
-
   if (warnings.length) announce('⚠️ Sanity check: ' + [...new Set(warnings)].join(', '));
   return state;
 }
@@ -419,7 +387,6 @@ const STORAGE_KEY = 'pwa-chatgpt-history-v1';
 let chatEl, inputEl, sendBtn, clearBtn, tpl;
 let history = [];
 function now() { return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }); }
-
 function addMessage(role, content, time = now()) {
   const node = tpl.content.firstElementChild.cloneNode(true);
   node.classList.toggle('user', role === 'user');
@@ -437,7 +404,6 @@ function restoreChat() {
 /* ----------------------- UI: Standings Tabs ----------------------- */
 function injectStandingsTabs() {
   if (document.getElementById('ccsf_tabs')) return;
-
   const wrap = document.createElement('div');
   wrap.id = 'ccsf_tabs';
   wrap.style.cssText = `
@@ -464,7 +430,6 @@ function injectStandingsTabs() {
     { id:'drv_std',  label:'Driver Standings' },
     { id:'tm_std',   label:'Team Standings' },
   ];
-
   const tabbar = wrap.querySelector('#ccsf_tabbar');
   tabs.forEach(t => {
     const b = document.createElement('button');
@@ -474,7 +439,6 @@ function injectStandingsTabs() {
     b.addEventListener('click', () => renderTab(t.id));
     tabbar.appendChild(b);
   });
-
   wrap.querySelector('#ccsf_close').onclick = () => wrap.remove();
   wrap.querySelector('#ccsf_collapse').onclick = (e) => {
     const p = wrap.querySelector('#ccsf_panel');
@@ -487,28 +451,22 @@ function injectStandingsTabs() {
     const active = wrap.dataset.active || 'drivers';
     renderTab(active);
   };
-
   function renderTab(id) {
     wrap.dataset.active = id;
     [...tabbar.children].forEach(b => b.style.background = (b.dataset.id === id) ? '#2a2a2a' : '#1a1a1a');
     const panel = wrap.querySelector('#ccsf_panel');
     if (!game?.state) { panel.textContent = 'No game state'; return; }
-
     if (id === 'drivers')      return panel.replaceChildren(buildDriversTable(game.state));
     if (id === 'drv_std')      return panel.replaceChildren(buildDriverStandingsTable(game.state));
     if (id === 'tm_std')       return panel.replaceChildren(buildTeamStandingsTable(game.state));
   }
-
   renderTab('drivers');
 }
 function tryRenderStandingsTabs() {
-  const root = document.getElementById('ccsf_tabs');
-  if (!root) return;
+  const root = document.getElementById('ccsf_tabs'); if (!root) return;
   const active = root.dataset.active || 'drivers';
-  const panel = root.querySelector('#ccsf_panel');
-  if (!panel) return;
+  const panel = root.querySelector('#ccsf_panel'); if (!panel) return;
   if (!game?.state) { panel.textContent = 'No game state'; return; }
-
   if (active === 'drivers')      panel.replaceChildren(buildDriversTable(game.state));
   if (active === 'drv_std')      panel.replaceChildren(buildDriverStandingsTable(game.state));
   if (active === 'tm_std')       panel.replaceChildren(buildTeamStandingsTable(game.state));
@@ -521,14 +479,11 @@ function mkTable(headers, rows) {
   const thead = document.createElement('thead');
   const trh = document.createElement('tr');
   headers.forEach(h => {
-    const th = document.createElement('th');
-    th.textContent = h;
+    const th = document.createElement('th'); th.textContent = h;
     th.style.cssText = 'text-align:left; padding:6px 8px; border-bottom:1px solid #2a2a2a; position:sticky; top:0; background:#111';
     trh.appendChild(th);
   });
-  thead.appendChild(trh);
-  table.appendChild(thead);
-
+  thead.appendChild(trh); table.appendChild(thead);
   const tbody = document.createElement('tbody');
   rows.forEach(r => {
     const tr = document.createElement('tr');
@@ -549,18 +504,15 @@ function wrapTable(title, tbl, icon='📊') {
   const h = document.createElement('div');
   h.innerHTML = `<strong style="font:600 13px system-ui">${icon} ${title}</strong>`;
   h.style.cssText = 'margin:0 0 8px 2px; color:#ddd';
-  box.appendChild(h);
-  box.appendChild(tbl);
-  return box;
+  box.appendChild(h); box.appendChild(tbl); return box;
 }
 function buildDriversTable(s) {
   const drivers = (s.drivers || []).map(d => ({
     name: d.name, team: d.team, age: d.age, rating: d.overall_rating, form: d.form
   }));
   const tbl = mkTable(['#','Driver','Team','Age','Rating','Form'],
-    drivers
-      .sort((a,b) => (b.rating ?? 0) - (a.rating ?? 0))
-      .map((d,i) => [i+1, d.name, d.team, d.age ?? '-', d.rating ?? '-', d.form ?? '-'])
+    drivers.sort((a,b) => (b.rating ?? 0) - (a.rating ?? 0))
+           .map((d,i) => [i+1, d.name, d.team, d.age ?? '-', d.rating ?? '-', d.form ?? '-'])
   );
   return wrapTable('Driver List', tbl, '👤');
 }
@@ -581,68 +533,48 @@ function buildTeamStandingsTable(s) {
 function getDriverStandings(s) {
   const direct = s?.stats?.driver_standings || s?.stats?.drivers_standings || s?.stats?.standings?.drivers || [];
   if (Array.isArray(direct) && direct.length) {
-    return direct
-      .map(x => ({
-        driver: x.driver || x.name || x.driver_name || x.id || x.driver_id || '—',
-        team: x.team || x.constructor || x.squad || '—',
-        points: Number(x.points ?? x.pts ?? 0),
-        wins: Number(x.wins ?? 0),
-        podiums: Number(x.podiums ?? x.pods ?? 0),
-      }))
-      .sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
+    return direct.map(x => ({
+      driver: x.driver || x.name || x.driver_name || x.id || x.driver_id || '—',
+      team: x.team || x.constructor || x.squad || '—',
+      points: Number(x.points ?? x.pts ?? 0),
+      wins: Number(x.wins ?? 0),
+      podiums: Number(x.podiums ?? x.pods ?? 0),
+    })).sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
   }
   return computeStandingsFromResults(s).drivers;
 }
 function getTeamStandings(s) {
   const direct = s?.stats?.constructor_standings || s?.stats?.team_standings || s?.stats?.standings?.teams || [];
   if (Array.isArray(direct) && direct.length) {
-    return direct
-      .map(x => ({
-        team: x.team || x.name || x.constructor || '—',
-        points: Number(x.points ?? x.pts ?? 0),
-        wins: Number(x.wins ?? 0),
-        podiums: Number(x.podiums ?? x.pods ?? 0),
-      }))
-      .sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
+    return direct.map(x => ({
+      team: x.team || x.name || x.constructor || '—',
+      points: Number(x.points ?? x.pts ?? 0),
+      wins: Number(x.wins ?? 0),
+      podiums: Number(x.podiums ?? x.pods ?? 0),
+    })).sort((a,b) => (b.points - a.points) || ((b.wins||0) - (a.wins||0)));
   }
   return computeStandingsFromResults(s).teams;
 }
 
-/* ----------------------- SIDEBAR Dashboard (with Next Race) ----------------------- */
+/* ----------------------- SIDEBAR Dashboard ----------------------- */
 function injectSidebar() {
   if (document.getElementById('dashboard-sidebar')) return;
-
   const sidebar = document.createElement('div');
   sidebar.id = 'dashboard-sidebar';
   sidebar.style.cssText = `
-    position:fixed;
-    top:0;
-    left:0;
-    width:220px;
-    height:100vh;
-    background:#17171b;
-    color:#eaeaea;
-    border-right:1px solid #23232b;
-    box-shadow:2px 0 18px rgba(0,0,0,.08);
-    z-index:9997;
-    padding:24px 16px 16px 14px;
-    font:15px/1.5 system-ui;
-    display:flex;
-    flex-direction:column;
-    gap:18px;
+    position:fixed; top:0; left:0; width:220px; height:100vh;
+    background:#17171b; color:#eaeaea; border-right:1px solid #23232b;
+    box-shadow:2px 0 18px rgba(0,0,0,.08); z-index:9997; padding:24px 16px 16px 14px;
+    font:15px/1.5 system-ui; display:flex; flex-direction:column; gap:18px;
   `;
-
   sidebar.innerHTML = `
     <div style="font-weight:700;font-size:1.2em;letter-spacing:.5px;">🏎️ F1 Chaos Dashboard</div>
-
     <div id="sb-next" style="background:#111216;border:1px solid #262833;border-radius:10px;padding:10px 10px 8px;">
       <div style="font:600 12px system-ui; color:#bdbdcc; margin-bottom:4px;">📅 Next Race</div>
       <div id="sb-next-title" style="font:700 13px/1.25 system-ui;">—</div>
       <div id="sb-next-meta"  style="color:#9ca0ad; font:12px/1.25 system-ui; margin-top:2px;">—</div>
     </div>
-
     <div id="sb-last" style="color:#b0b0b7; font:12px/1.25 system-ui;">Last: none (preseason)</div>
-
     <nav style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
       <button id="sb-drivers"   style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Drivers</button>
       <button id="sb-teams"     style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Teams</button>
@@ -650,44 +582,19 @@ function injectSidebar() {
       <button id="sb-calendar"  style="background:none;border:none;color:#eaeaea;text-align:left;cursor:pointer;font:inherit;padding:4px 0;">Calendar</button>
       <button id="sb-refresh"   style="margin-top:6px;background:#1f1f1f;border:1px solid #333;color:#ddd;padding:4px 8px;border-radius:6px;cursor:pointer;">↻ Refresh</button>
     </nav>
-
-    <div id="sb-season-info" style="margin-top:4px;font-size:.96em;color:#b0b0b7;">
-      <!-- Season info will be injected here -->
-    </div>
+    <div id="sb-season-info" style="margin-top:4px;font-size:.96em;color:#b0b0b7;"></div>
   `;
-
   document.body.appendChild(sidebar);
-   
-     // shift chat UI to the right so it isn't hidden under the sidebar
-  const chatRoot = document.getElementById('chat');
-  if (chatRoot) {
-    chatRoot.style.marginLeft = '220px';
-  }
-  const inputBox = document.getElementById('input');
-  if (inputBox) {
-    inputBox.style.marginLeft = '220px';
-  }
 
-  // nav buttons
-  document.getElementById('sb-drivers').onclick = () => {
-    injectStandingsTabs();
-    document.querySelector('#ccsf_tabs [data-id="drivers"]')?.click();
-  };
-  document.getElementById('sb-teams').onclick = () => {
-    injectStandingsTabs();
-    document.querySelector('#ccsf_tabs [data-id="tm_std"]')?.click();
-  };
-  document.getElementById('sb-standings').onclick = () => {
-    injectStandingsTabs();
-    document.querySelector('#ccsf_tabs [data-id="drv_std"]')?.click();
-  };
-  document.getElementById('sb-calendar').onclick = () => {
-    announce('🗓️ Calendar view coming soon!');
-  };
+  // shift chat UI to the right so it isn't hidden under the sidebar
+  const chatRoot = document.getElementById('chat'); if (chatRoot) chatRoot.style.marginLeft = '220px';
+  const inputBox = document.getElementById('input'); if (inputBox) inputBox.style.marginLeft = '220px';
 
-  document.getElementById('sb-refresh').onclick = () => updateSidebar(game?.state);
-
-  // initial paint
+  document.getElementById('sb-drivers').onclick = () => { injectStandingsTabs(); document.querySelector('#ccsf_tabs [data-id="drivers"]')?.click(); };
+  document.getElementById('sb-teams').onclick   = () => { injectStandingsTabs(); document.querySelector('#ccsf_tabs [data-id="tm_std"]')?.click(); };
+  document.getElementById('sb-standings').onclick= () => { injectStandingsTabs(); document.querySelector('#ccsf_tabs [data-id="drv_std"]')?.click(); };
+  document.getElementById('sb-calendar').onclick = () => { announce('🗓️ Calendar view coming soon!'); };
+  document.getElementById('sb-refresh').onclick  = () => updateSidebar(game?.state);
   updateSidebar(game?.state);
 }
 function updateSidebar(state) {
@@ -695,57 +602,38 @@ function updateSidebar(state) {
   const nextTitle = document.getElementById('sb-next-title');
   const nextMeta  = document.getElementById('sb-next-meta');
   const lastEl    = document.getElementById('sb-last');
-
   if (!seasonEl || !nextTitle || !nextMeta || !lastEl) return;
-
   if (!state) {
     seasonEl.innerHTML = `<div><strong>Season:</strong> —</div><div><strong>Timeline:</strong> —</div><div><strong>Last Round:</strong> —</div>`;
-    nextTitle.textContent = '—';
-    nextMeta.textContent = '—';
-    lastEl.textContent = 'Last: none';
-    return;
+    nextTitle.textContent = '—'; nextMeta.textContent = '—'; lastEl.textContent = 'Last: none'; return;
   }
-
   const m = state.meta || {};
   seasonEl.innerHTML = `
     <div><strong>Season:</strong> ${m.season ?? "?"}</div>
     <div><strong>Timeline:</strong> ${m.timeline ?? "?"}</div>
     <div><strong>Last Round:</strong> ${m.last_completed_round ?? 0}</div>
   `;
-
   const next = nextRaceByRound(state);
   if (next) {
     nextTitle.textContent = `Round ${next.round} — ${next.name}`;
     const when = next.date ? new Date(next.date).toDateString() : '';
     nextMeta.textContent = `${when}${next.country ? ` • ${next.country}` : ''}`;
-  } else {
-    nextTitle.textContent = 'Season complete';
-    nextMeta.textContent = '';
-  }
-
+  } else { nextTitle.textContent = 'Season complete'; nextMeta.textContent = ''; }
   const rr = Array.isArray(state?.stats?.race_results) ? state.stats.race_results : [];
   const last = rr.at(-1);
   lastEl.textContent = last ? `Last: Round ${last.round} — ${last.name}` : 'Last: none (preseason)';
 }
 
-/* ----------------------- RACE button ----------------------- */
+/* ----------------------- RACE button & flow ----------------------- */
 function injectRaceButton() {
   if (document.getElementById('race-btn')) return;
   const btn = document.createElement('button');
-  btn.id = 'race-btn';
-  btn.textContent = 'RACE';
-  btn.title = 'Simulate next race (quali + GP)';
-  btn.style.cssText = `
-    position:fixed; left:12px; bottom:12px; z-index:9999;
-    padding:10px 14px; border-radius:10px; border:1px solid #333; cursor:pointer;
-    font:700 14px/1 system-ui; letter-spacing:.5px;
-    background:#c1121f; color:#fff; box-shadow:0 3px 14px rgba(0,0,0,.35)
-  `;
+  btn.id = 'race-btn'; btn.textContent = 'RACE'; btn.title = 'Simulate next race (quali + GP)';
+  btn.style.cssText = `position:fixed; left:12px; bottom:12px; z-index:9999; padding:10px 14px; border-radius:10px; border:1px solid #333; cursor:pointer; font:700 14px/1 system-ui; letter-spacing:.5px; background:#c1121f; color:#fff; box-shadow:0 3px 14px rgba(0,0,0,.35)`;
   btn.addEventListener('click', runRaceSim);
   document.body.appendChild(btn);
 }
 
-/* ----------------------- RACE flow ----------------------- */
 async function runRaceSim() {
   if (!game?.state) return announce('😵 No game state to simulate.');
   ensureStatsScaffold(game.state);
@@ -761,7 +649,6 @@ async function runRaceSim() {
     const raceSlice = buildRaceSliceForPrompt(stateNow);
     const slim      = getSeedContext();
 
-    // Guards: roster+teams+points info
     const rosterDrivers = (stateNow?.drivers || []).map(d => d.name).filter(Boolean);
     const rosterTeams   = (stateNow?.teams || []).map(t => t.team_name || t.name).filter(Boolean);
     const ptsObj = (() => {
@@ -779,22 +666,21 @@ async function runRaceSim() {
     const roundHint = `Next race is Round ${nxt.round}: ${nxt.name}. Use this exact round number and name.`;
 
     const systemPrompt =
-      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
-      'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\n' +
-      'Narration: 2–4 short sentences, witty/cynical paddock vibe. No code blocks.\n' +
-      'You MUST ONLY use these names. If a name is missing, replace with the closest roster driver.\n' +
-      'Allowed drivers=' + JSON.stringify(rosterDrivers) + '\n' +
-      'Allowed teams=' + JSON.stringify(rosterTeams) + '\n' +
-      'Points per position (1-based)=' + JSON.stringify(ptsObj) + '\n' +
-      roundHint + '\n' +
+      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\\n' +
+      'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\\n' +
+      'Narration: 2–4 short sentences, witty/cynical paddock vibe. No code blocks.\\n' +
+      'You MUST ONLY use these names. If a name is missing, replace with the closest roster driver.\\n' +
+      'Allowed drivers=' + JSON.stringify(rosterDrivers) + '\\n' +
+      'Allowed teams=' + JSON.stringify(rosterTeams) + '\\n' +
+      'Points per position (1-based)=' + JSON.stringify(ptsObj) + '\\n' +
+      roundHint + '\\n' +
       'Simulate QUALIFYING + RACE for the NEXT EVENT using race_context. ' +
-      'WRITE a PUSH to /stats/race_results with: { "round": <num>, "name": "<track>", "finishers":[{"driver":"<roster>","team":"<team>","position":1,"points":<from table>}, ...] }.\n' +
-      'Keep car attrs 0–100. If crucial data is missing, ask ONE short follow-up in "narration" and set ops empty.\n' +
-      'Example (no code fences): ' +
-      '{ "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":1,"name":"Example","finishers":[{"driver":"' +
+      'WRITE a PUSH to /stats/race_results with: { "round": <num>, "name": "<track>", "finishers":[{"driver":"<roster>","team":"<team>","position":1,"points":<from table>}, ...] }.\\n' +
+      'Keep car attrs 0–100. If crucial data is missing, ask ONE short follow-up in "narration" and set ops empty.\\n' +
+      'Example (no code fences): { "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":1,"name":"Example","finishers":[{"driver":"' +
       (rosterDrivers[0] || 'Driver A') + '","team":"' + (rosterTeams[0] || 'Team A') + '","position":1,"points":' + (ptsObj[1]||25) + '}]}}]}}' +
-      '\n' +
-      'game_state_slim=' + JSON.stringify(slim) + '\n' +
+      '\\n' +
+      'game_state_slim=' + JSON.stringify(slim) + '\\n' +
       'race_context=' + JSON.stringify(raceSlice);
 
     const res = await fetch('api/chat', {
@@ -812,11 +698,9 @@ async function runRaceSim() {
     logApiToChat('RACE api/chat body (first 1200 chars)', raw.slice(0, 1200));
     if (!res.ok) { thinkingEl.classList.remove('thinking'); thinkingEl.textContent = `❌ Chat API HTTP ${res.status}.`; return; }
 
-    // accept both {reply:"<json>"} and raw json
     let data = null; try { data = JSON.parse(raw); } catch {}
     let reply = (data && data.reply) ? data.reply : raw;
 
-    // Extract JSON payload
     let payload = null;
     if (typeof reply === 'string') {
       const start = reply.indexOf('{'); const end = reply.lastIndexOf('}');
@@ -833,16 +717,24 @@ async function runRaceSim() {
       return;
     }
 
-    if (check.ops) {
+    if (check.ops && Array.isArray(check.ops.changes) && check.ops.changes.length) {
       const resOps = applyOps(game.state, check.ops);
       if (resOps.ok) {
         onOpsApplied(game.state);
-        outText = (outText || 'Race processed.') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (outText || 'Race processed.') + `\\n\\n🧾 Database updated: ${resOps.changed.join(', ')}`;
       } else {
         outText = (outText || 'No actionable ops.');
       }
     } else {
-      outText = outText || 'No structured result.';
+      // ensure the world moves: log a tiny scene/event for this turn
+      const fallback = mkEventOps('User attempted race sim; model returned no ops.', 'scene', 'noted');
+      const resOps = applyOps(game.state, fallback);
+      if (resOps.ok) {
+        onOpsApplied(game.state);
+        outText = (outText || 'Race processed.') + `\\n\\n🧾 Database updated: ${resOps.changed.join(', ')}`;
+      } else {
+        outText = outText || 'Race processed (no state change).';
+      }
     }
 
     thinkingEl.classList.remove('thinking'); thinkingEl.textContent = outText;
@@ -856,7 +748,7 @@ async function runRaceSim() {
   }
 }
 
-/* ----------------------- General chat (dual-mode: friendly by default) ----------------------- */
+/* ----------------------- General chat (Always-JSON, scene-leading) ----------------------- */
 async function send() {
   const text = inputEl.value.trim(); if (!text) return; inputEl.value = '';
   const msg = { role: 'user', content: text, time: now() };
@@ -865,21 +757,16 @@ async function send() {
   addMessage('assistant', 'Thinking…', now());
   const thinkingEl = chatEl.lastElementChild.querySelector('.content'); thinkingEl.classList.add('thinking');
 
-  const opsMode = isOpsIntent(text);
-
   try {
     const seed = getSeedContext();
-    const systemPrompt = opsMode
-      ? (
-          'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
-          'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type": "ccsf_ops_v1", "changes": [ ... ] } }.\n' +
-          'Rules: use ONLY existing fields; car attrs 0–100; realistic costs/durations; if unsure, ask ONE short follow-up in "narration" and set ops empty.' +
-          (seed ? '\n\ngame_state=' + JSON.stringify(seed) : '\n\n(game_state unavailable)')
-        )
-      : (
-          'You are DS AI, a cynical meme-y F1 team strategist. Reply as natural text only, 1–4 short sentences. ' +
-          'No code, no JSON, no markdown fences. Be witty but clear.'
-        );
+    const systemPrompt =
+      'You are DS AI for an F1 management sim. Return STRICT JSON ONLY: ' +
+      '{"narration": string, "ops": {"_type":"ccsf_ops_v1","changes":[...]}}.\\n' +
+      'Narration: 1–3 short cynical sentences that LEAD the scene. If the user intent is open-ended (visit/talk/inspect/try things), ask ONE pointed follow-up with 2–3 concrete options.\\n' +
+      'OPS: If the user asked for a concrete change (transfers, upgrades, budget, penalties, strategy), emit real ops using existing fields only (set/inc/push). Car attrs 0–100.\\n' +
+      'If the request is exploratory/roleplay or info is missing, STILL include at least one lightweight change: push a brief scene/event record under /events summarising the user’s intent. Then ask your one question in narration.\\n' +
+      'No code fences. If action is impossible, ask one short question and set ops: {}.\\n' +
+      (seed ? ('game_state=' + JSON.stringify(seed)) : '(game_state unavailable)');
 
     const res = await fetch('api/chat', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -892,22 +779,14 @@ async function send() {
     });
 
     const raw = await res.text();
-    logApiToChat(opsMode ? 'CHAT(ops) status' : 'CHAT status', res.status + (res.ok?' OK':' ERROR'));
-    logApiToChat(opsMode ? 'CHAT(ops) body' : 'CHAT body', raw.slice(0, 1200));
+    logApiToChat('CHAT status', res.status + (res.ok?' OK':' ERROR'));
+    logApiToChat('CHAT body', raw.slice(0, 1200));
     if (!res.ok) {
       thinkingEl.classList.remove('thinking'); thinkingEl.textContent = `❌ Chat API HTTP ${res.status}.`;
       history.push({ role:'assistant', content: thinkingEl.textContent, time: now() }); return;
     }
 
-    if (!opsMode) {
-      const data = (() => { try { return JSON.parse(raw); } catch { return null; } })();
-      const reply = (data && data.reply) ? data.reply : raw;
-      const clean = cleanNarration(String(reply));
-      thinkingEl.classList.remove('thinking'); thinkingEl.textContent = clean || '…';
-      history.push({ role:'assistant', content: clean, time: now() }); return;
-    }
-
-    // ops mode
+    // Always JSON path (no banter-only mode)
     let data = null; try { data = JSON.parse(raw); } catch {}
     let reply = (data && data.reply) ? data.reply : raw;
     let payload = null;
@@ -917,23 +796,25 @@ async function send() {
     } else if (reply && typeof reply === 'object') { payload = reply; }
 
     const check = validateOpsPayload(payload);
-    let outText = cleanNarration(payload?.narration || 'Done.');
+    let outText = cleanNarration(payload?.narration || 'OK');
 
     if (!check.ok) {
-      thinkingEl.classList.remove('thinking'); thinkingEl.textContent = outText || `🤖 Malformed result (${check.reason}).`;
-      history.push({ role:'assistant', content: thinkingEl.textContent, time: now() }); return;
+      thinkingEl.classList.remove('thinking');
+      thinkingEl.textContent = outText || `🤖 Malformed result (${check.reason}).`;
+      history.push({ role:'assistant', content: thinkingEl.textContent, time: now() });
+      return;
     }
 
-    if (check.ops) {
-      const resOps = applyOps(game.state, check.ops);
-      if (resOps.ok) {
-        onOpsApplied(game.state);
-        outText = (outText || 'OK') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
-      } else {
-        outText = outText || 'No actionable ops.';
-      }
+    // Ensure world moves: apply ops if present; otherwise log an /events entry summarizing this turn
+    const hasOps = check.ops && Array.isArray(check.ops.changes) && check.ops.changes.length > 0;
+    const finalOps = hasOps ? check.ops : mkEventOps(text, 'scene', 'noted');
+
+    const resOps = applyOps(game.state, finalOps);
+    if (resOps.ok) {
+      onOpsApplied(game.state);
+      outText = (outText || 'OK') + `\\n\\n🧾 Database updated: ${resOps.changed.join(', ')}`;
     } else {
-      outText = outText || 'No structured result.';
+      outText = (outText || 'OK') + `\\n\\n(ℹ️ No fields changed)`;
     }
 
     thinkingEl.classList.remove('thinking'); thinkingEl.textContent = outText;
@@ -1029,7 +910,7 @@ function wireButtons() {
 
 /* ----------------------- Boot ----------------------- */
 window.addEventListener('DOMContentLoaded', async () => {
-  // chat DOM refs (your original IDs)
+  // chat DOM refs
   chatEl   = document.getElementById('chat');
   inputEl  = document.getElementById('input');
   sendBtn  = document.getElementById('send');
