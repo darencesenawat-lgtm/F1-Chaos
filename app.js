@@ -1,7 +1,8 @@
 
-// app.js — DS AI Chat-First Build (Always-JSON, Scene-leading) — patched
-// Makes every reply JSON with narration + ops; if no concrete ops, logs /events entry.
-// Preserves race sim & standings; sidebar no longer overlaps chat.
+// app.js — DS AI Chat-First Build v3 (Always-JSON, Scene-leading, Choices) — NO AUTOPILOT
+// Every reply is JSON with narration + ops; if no concrete ops, logs /events entry.
+// Sidebar pushes chat over. Race sim has strict JSON + /events fallback.
+// No transfer/autopilot shortcuts — everything goes through the model.
 
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
@@ -9,7 +10,7 @@ import { bootGame, loadGame, exportBundle } from './loader.js';
    🔒 GAME CONTRACT (Do Not Break)
    1) New game must start at: season=2025, timeline='preseason', last_completed_round=0
    2) Next race chosen by round > last_completed_round (ignore real-world dates)
-   3) Chat ALWAYS returns JSON: { narration, ops }, lead the scene with 1 follow-up if open
+   3) Chat ALWAYS returns JSON: { narration, ops } and may include choices[] for UI
    4) After any OPS that modify results, recompute & store driver/constructor standings
    5) Team names in standings map to roster teams (normalize/force mapping)
    6) On boot/resume, announce current stage: `${season} — ${timeline} (last_completed_round=N)`
@@ -186,7 +187,7 @@ function buildRaceSliceForPrompt(s) {
 /* ----------------------- Clean narration ----------------------- */
 function cleanNarration(s) {
   if (!s) return '';
-  return String(s).replace(/```[\\s\\S]*?```/g, '').replace(/`/g, '').trim();
+  return String(s).replace(/```[\s\S]*?```/g, '').replace(/`/g, '').trim();
 }
 
 /* ----------------------- Validate payload ----------------------- */
@@ -666,21 +667,21 @@ async function runRaceSim() {
     const roundHint = `Next race is Round ${nxt.round}: ${nxt.name}. Use this exact round number and name.`;
 
     const systemPrompt =
-      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\\n' +
-      'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\\n' +
-      'Narration: 2–4 short sentences, witty/cynical paddock vibe. No code blocks.\\n' +
-      'You MUST ONLY use these names. If a name is missing, replace with the closest roster driver.\\n' +
-      'Allowed drivers=' + JSON.stringify(rosterDrivers) + '\\n' +
-      'Allowed teams=' + JSON.stringify(rosterTeams) + '\\n' +
-      'Points per position (1-based)=' + JSON.stringify(ptsObj) + '\\n' +
-      roundHint + '\\n' +
+      'You are DS AI, the cynical meme-narrator strategist for an F1 management sim.\n' +
+      'Return STRICT JSON ONLY: { "narration": string, "ops": { "_type":"ccsf_ops_v1", "changes":[ ... ] } }.\n' +
+      'Narration: 2–4 short sentences, witty/cynical paddock vibe. No code blocks.\n' +
+      'If you ask the user to decide something, include a "choices" array [{id:"A",label:"...",reply:"..."}].\n' +
+      'You MUST ONLY use these names. If a name is missing, replace with the closest roster driver.\n' +
+      'Allowed drivers=' + JSON.stringify(rosterDrivers) + '\n' +
+      'Allowed teams=' + JSON.stringify(rosterTeams) + '\n' +
+      'Points per position (1-based)=' + JSON.stringify(ptsObj) + '\n' +
+      roundHint + '\n' +
       'Simulate QUALIFYING + RACE for the NEXT EVENT using race_context. ' +
-      'WRITE a PUSH to /stats/race_results with: { "round": <num>, "name": "<track>", "finishers":[{"driver":"<roster>","team":"<team>","position":1,"points":<from table>}, ...] }.\\n' +
-      'Keep car attrs 0–100. If crucial data is missing, ask ONE short follow-up in "narration" and set ops empty.\\n' +
-      'Example (no code fences): { "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":1,"name":"Example","finishers":[{"driver":"' +
-      (rosterDrivers[0] || 'Driver A') + '","team":"' + (rosterTeams[0] || 'Team A') + '","position":1,"points":' + (ptsObj[1]||25) + '}]}}]}}' +
-      '\\n' +
-      'game_state_slim=' + JSON.stringify(slim) + '\\n' +
+      'WRITE a PUSH to /stats/race_results with: { "round": <num>, "name": "<track>", "finishers":[{"driver":"<roster>","team":"<team>","position":1,"points":<from table>}, ...] }.\n' +
+      'Keep car attrs 0–100. If crucial data is missing, ask ONE short follow-up in "narration" and set ops empty.\n' +
+      'Example (no fences): { "narration":"SC on lap 23 flipped it.", "ops":{"_type":"ccsf_ops_v1","changes":[{"op":"push","path":"/stats/race_results","value":{"round":1,"name":"Example","finishers":[{"driver":"' +
+      (rosterDrivers[0] || 'Driver A') + '","team":"' + (rosterTeams[0] || 'Team A') + '","position":1,"points":' + (ptsObj[1]||25) + '}]}}]}}\n' +
+      'game_state_slim=' + JSON.stringify(slim) + '\n' +
       'race_context=' + JSON.stringify(raceSlice);
 
     const res = await fetch('api/chat', {
@@ -721,7 +722,7 @@ async function runRaceSim() {
       const resOps = applyOps(game.state, check.ops);
       if (resOps.ok) {
         onOpsApplied(game.state);
-        outText = (outText || 'Race processed.') + `\\n\\n🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (outText || 'Race processed.') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
       } else {
         outText = (outText || 'No actionable ops.');
       }
@@ -731,7 +732,7 @@ async function runRaceSim() {
       const resOps = applyOps(game.state, fallback);
       if (resOps.ok) {
         onOpsApplied(game.state);
-        outText = (outText || 'Race processed.') + `\\n\\n🧾 Database updated: ${resOps.changed.join(', ')}`;
+        outText = (outText || 'Race processed.') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
       } else {
         outText = outText || 'Race processed (no state change).';
       }
@@ -748,7 +749,7 @@ async function runRaceSim() {
   }
 }
 
-/* ----------------------- General chat (Always-JSON, scene-leading) ----------------------- */
+/* ----------------------- General chat (Always-JSON, scene-leading, choices) ----------------------- */
 async function send() {
   const text = inputEl.value.trim(); if (!text) return; inputEl.value = '';
   const msg = { role: 'user', content: text, time: now() };
@@ -761,11 +762,12 @@ async function send() {
     const seed = getSeedContext();
     const systemPrompt =
       'You are DS AI for an F1 management sim. Return STRICT JSON ONLY: ' +
-      '{"narration": string, "ops": {"_type":"ccsf_ops_v1","changes":[...]}}.\\n' +
-      'Narration: 1–3 short cynical sentences that LEAD the scene. If the user intent is open-ended (visit/talk/inspect/try things), ask ONE pointed follow-up with 2–3 concrete options.\\n' +
-      'OPS: If the user asked for a concrete change (transfers, upgrades, budget, penalties, strategy), emit real ops using existing fields only (set/inc/push). Car attrs 0–100.\\n' +
-      'If the request is exploratory/roleplay or info is missing, STILL include at least one lightweight change: push a brief scene/event record under /events summarising the user’s intent. Then ask your one question in narration.\\n' +
-      'No code fences. If action is impossible, ask one short question and set ops: {}.\\n' +
+      '{"narration": string, "ops": {"_type":"ccsf_ops_v1","changes":[...]}}.\n' +
+      'Narration: 1–3 short cynical sentences that LEAD the scene. If the user intent is open-ended (visit/talk/inspect/try things), ask ONE pointed follow-up with 2–3 concrete options.\n' +
+      'Also include an optional "choices" array when offering options, with items like {"id":"A","label":"Short label","reply":"Exact message to send if user clicks"}.\n' +
+      'OPS: If the user asked for a concrete change (transfers, upgrades, budget, penalties, strategy), emit real ops using existing fields only (set/inc/push). Car attrs 0–100.\n' +
+      'If the request is exploratory/roleplay or info is missing, STILL include at least one lightweight change: push a brief scene/event record under /events summarising the user’s intent. Then ask your one question in narration.\n' +
+      'No code fences. If action is impossible, ask one short question and set ops: {}.\n' +
       (seed ? ('game_state=' + JSON.stringify(seed)) : '(game_state unavailable)');
 
     const res = await fetch('api/chat', {
@@ -812,13 +814,36 @@ async function send() {
     const resOps = applyOps(game.state, finalOps);
     if (resOps.ok) {
       onOpsApplied(game.state);
-      outText = (outText || 'OK') + `\\n\\n🧾 Database updated: ${resOps.changed.join(', ')}`;
+      outText = (outText || 'OK') + `\n\n🧾 Database updated: ${resOps.changed.join(', ')}`;
     } else {
-      outText = (outText || 'OK') + `\\n\\n(ℹ️ No fields changed)`;
+      outText = (outText || 'OK') + `\n\n(ℹ️ No fields changed)`;
     }
 
     thinkingEl.classList.remove('thinking'); thinkingEl.textContent = outText;
     history.push({ role:'assistant', content: outText, time: now() });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(history));
+
+    // Render interactive choices if provided
+    if (payload && Array.isArray(payload.choices) && payload.choices.length) {
+      const lastBubble = chatEl.lastElementChild;
+      if (lastBubble) {
+        const panel = document.createElement('div');
+        panel.style.cssText = 'margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;';
+        payload.choices.forEach(ch => {
+          const b = document.createElement('button');
+          b.textContent = (ch.id ? ch.id + ') ' : '') + (ch.label || 'Choose');
+          b.style.cssText = 'background:#1f1f1f;border:1px solid #333;color:#ddd;padding:4px 8px;border-radius:6px;cursor:pointer;font:12px system-ui';
+          b.addEventListener('click', () => {
+            const msg = (ch.reply && typeof ch.reply === 'string') ? ch.reply : (ch.label || 'OK');
+            inputEl.value = msg;
+            send();
+          });
+          panel.appendChild(b);
+        });
+        lastBubble.querySelector('.content').appendChild(panel);
+      }
+    }
+
   } catch (err) {
     thinkingEl.classList.remove('thinking');
     const msg = 'Error: ' + (err?.message || 'Failed to reach /api/chat');
