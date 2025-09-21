@@ -9,7 +9,7 @@
 import { bootGame, loadGame, exportBundle } from './loader.js';
 
 const CFG = {
-  DEBUG: false,
+  DEBUG: true,
   START_SEASON: 2025,
   START_TIMELINE: 'preseason',
   START_ROUND: 0,
@@ -52,13 +52,38 @@ function announceStage(state) {
   announce(`📅 ${m.season ?? '?'} — ${m.timeline ?? '?'} (last_completed_round: ${m.last_completed_round ?? 0})`);
 }
 
-function logApiToChat(title, info) {
+function logApiToChat(title, info, options = {}) {
   if (!CFG.DEBUG) return;
+  
   try {
-    const pretty = typeof info === 'string' ? info : JSON.stringify(info, null, 2);
-    addMessage('assistant', `🔎 ${title}\n${pretty}`);
-  } catch {
-    addMessage('assistant', `🔎 ${title} (unprintable)`);
+    let pretty;
+    const timestamp = new Date().toISOString();
+    const maxLength = options.maxLength || 2000;
+    
+    if (typeof info === 'string') {
+      pretty = info.length > maxLength ? info.slice(0, maxLength) + '...[truncated]' : info;
+    } else {
+      const jsonStr = JSON.stringify(info, null, 2);
+      pretty = jsonStr.length > maxLength ? jsonStr.slice(0, maxLength) + '...[truncated]' : jsonStr;
+    }
+    
+    // Add metadata for debugging
+    const metadata = [
+      `[${timestamp}]`,
+      typeof info === 'object' ? `(${Object.keys(info).length} keys)` : `(${info?.length || 0} chars)`,
+      options.source ? `[${options.source}]` : ''
+    ].filter(Boolean).join(' ');
+    
+    const fullMessage = `🔎 ${title} ${metadata}\n${pretty}`;
+    addMessage('assistant', fullMessage);
+    
+    // Also log to console for server-side debugging
+    console.log(`[API DEBUG] ${title}:`, info);
+    
+  } catch (e) {
+    const errorMsg = `🔎 ${title} [${timestamp}] (debug error: ${e.message})`;
+    addMessage('assistant', errorMsg);
+    console.error('[logApiToChat] Error logging to chat:', e, 'Original info:', info);
   }
 }
 
@@ -181,36 +206,133 @@ function cleanReplyText(x) {
   return s.slice(0, 800);
 }
 
-/* ----------------------- Tolerant JSON extractor (loose mode) ----------------------- */
+/* ----------------------- Tolerant JSON extractor (robust mode) ----------------------- */
 function extractJsonBlock(text) {
   if (text == null) return null;
   const s = String(text);
+  
+  // Try to handle code fences first
+  const codeFenceMatch = s.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/i);
+  if (codeFenceMatch) {
+    try { 
+      return JSON.parse(codeFenceMatch[1]); 
+    } catch (e) {
+      if (CFG.DEBUG) console.log('[extractJsonBlock] Code fence JSON parse failed:', e.message);
+    }
+  }
+  
+  // Look for JSON blocks, trying multiple potential matches
+  const jsonBlockRegex = /(\{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*\})/g;
+  const matches = s.match(jsonBlockRegex) || [];
+  
+  // Try each potential JSON block, starting with the longest ones
+  const sortedMatches = matches.sort((a, b) => b.length - a.length);
+  
+  for (const match of sortedMatches) {
+    try {
+      const parsed = JSON.parse(match);
+      // Prefer blocks that look like our expected structure
+      if (parsed && typeof parsed === 'object' && ('narration' in parsed || 'ops' in parsed)) {
+        return parsed;
+      }
+      // Still return any valid JSON as fallback
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (e) {
+      // Continue to next match
+      if (CFG.DEBUG) console.log('[extractJsonBlock] JSON parse attempt failed:', e.message, 'for:', match.slice(0, 100));
+    }
+  }
+  
+  // Fallback to original simple approach for backwards compatibility
   const start = s.indexOf('{');
-  const end   = s.lastIndexOf('}');
-  if (start === -1 || end === -1 || end <= start) return null;
-  try { return JSON.parse(s.slice(start, end + 1)); } catch { return null; }
+  const end = s.lastIndexOf('}');
+  if (start === -1 || end === -1 || end <= start) {
+    if (CFG.DEBUG) console.log('[extractJsonBlock] No valid JSON found in text');
+    return null;
+  }
+  
+  try { 
+    return JSON.parse(s.slice(start, end + 1)); 
+  } catch (e) {
+    if (CFG.DEBUG) console.log('[extractJsonBlock] Fallback parse failed:', e.message);
+    return null;
+  }
 }
 
-/* ----------------------- Validate payload (lenient; narration-first) ----------------------- */
+/* ----------------------- Validate payload (strict with debug logging) ----------------------- */
 function validateOpsPayload(payload) {
+  if (CFG.DEBUG) console.log('[validateOpsPayload] Starting validation for:', payload);
+  
   // Fatal stops: no object or no narration text at all
   if (!payload || typeof payload !== 'object') {
-    return { ok: false, fatal: true, reason: 'no-payload', ops: null };
+    const reason = !payload ? 'no-payload' : 'payload-not-object';
+    if (CFG.DEBUG) console.log('[validateOpsPayload] FATAL: payload validation failed -', reason, typeof payload);
+    return { ok: false, fatal: true, reason, ops: null };
   }
+  
+  // Check for narration field existence and content
   const hasNarr =
     ('narration' in payload) &&
     payload.narration != null &&
     String(payload.narration).trim() !== '';
+  
   if (!hasNarr) {
+    if (CFG.DEBUG) {
+      console.log('[validateOpsPayload] FATAL: narration validation failed');
+      console.log('  - has narration key:', 'narration' in payload);
+      console.log('  - narration value:', payload.narration);
+      console.log('  - narration type:', typeof payload.narration);
+      console.log('  - narration trimmed length:', payload.narration ? String(payload.narration).trim().length : 'N/A');
+    }
     return { ok: false, fatal: true, reason: 'no-narration', ops: null };
   }
+  
+  if (CFG.DEBUG) console.log('[validateOpsPayload] Narration validated successfully:', String(payload.narration).slice(0, 100) + '...');
 
-  // Soft result: narration is present, ops MAY be missing/invalid
+  // Validate ops structure if present
   const ops = payload.ops;
-  if (ops && ops._type === 'ccsf_ops_v1' && Array.isArray(ops.changes)) {
+  if (ops) {
+    if (CFG.DEBUG) console.log('[validateOpsPayload] Ops present, validating structure:', ops);
+    
+    // Check ops type
+    if (ops._type !== 'ccsf_ops_v1') {
+      if (CFG.DEBUG) console.log('[validateOpsPayload] Ops _type invalid:', ops._type, 'expected: ccsf_ops_v1');
+      return { ok: true, fatal: false, reason: 'invalid-ops-type', ops: null };
+    }
+    
+    // Check ops changes array
+    if (!Array.isArray(ops.changes)) {
+      if (CFG.DEBUG) console.log('[validateOpsPayload] Ops changes not array:', typeof ops.changes, ops.changes);
+      return { ok: true, fatal: false, reason: 'invalid-ops-changes', ops: null };
+    }
+    
+    // Validate each change operation
+    for (let i = 0; i < ops.changes.length; i++) {
+      const change = ops.changes[i];
+      if (!change || typeof change !== 'object') {
+        if (CFG.DEBUG) console.log(`[validateOpsPayload] Change ${i} is not an object:`, change);
+        return { ok: true, fatal: false, reason: `invalid-change-${i}`, ops: null };
+      }
+      
+      if (!change.op || !change.path) {
+        if (CFG.DEBUG) console.log(`[validateOpsPayload] Change ${i} missing required fields:`, { op: change.op, path: change.path });
+        return { ok: true, fatal: false, reason: `incomplete-change-${i}`, ops: null };
+      }
+      
+      if (!['set', 'inc', 'push'].includes(change.op)) {
+        if (CFG.DEBUG) console.log(`[validateOpsPayload] Change ${i} has invalid op:`, change.op);
+        return { ok: true, fatal: false, reason: `invalid-op-${i}`, ops: null };
+      }
+    }
+    
+    if (CFG.DEBUG) console.log('[validateOpsPayload] Ops validation successful, changes count:', ops.changes.length);
     return { ok: true, fatal: false, reason: null, ops };
   }
+  
   // Narration is fine but ops missing/malformed — allow clarification flow
+  if (CFG.DEBUG) console.log('[validateOpsPayload] No ops present, allowing clarification flow');
   return { ok: true, fatal: false, reason: 'no-ops', ops: null };
 }
 
@@ -694,6 +816,16 @@ async function runRaceSim() {
 
     let payload = (typeof reply === 'object' && reply) ? reply : extractJsonBlock(String(reply ?? raw)) || null;
 
+    // Debug logging after payload extraction
+    logApiToChat('RACE payload extraction', {
+      raw_length: raw?.length || 0,
+      data_parsed: !!data,
+      reply_type: typeof reply,
+      reply_length: reply ? String(reply).length : 0,
+      payload_extracted: !!payload,
+      payload_keys: payload ? Object.keys(payload) : null
+    }, { source: 'runRaceSim()' });
+
     const check = validateOpsPayload(payload);
     let outText = cleanNarration(payload?.narration) || cleanReplyText(reply) || '🤡 (GPT forgot the punchline)';
 
@@ -767,6 +899,16 @@ async function send() {
     let data = null; try { data = JSON.parse(raw); } catch {}
     let reply = (data && data.reply) ? data.reply : raw;
     let payload = (typeof reply === 'object' && reply) ? reply : extractJsonBlock(String(reply ?? raw)) || null;
+
+    // Debug logging after payload extraction
+    logApiToChat('SEND payload extraction', {
+      raw_length: raw?.length || 0,
+      data_parsed: !!data,
+      reply_type: typeof reply,
+      reply_length: reply ? String(reply).length : 0,
+      payload_extracted: !!payload,
+      payload_keys: payload ? Object.keys(payload) : null
+    }, { source: 'send()' });
 
     const check = validateOpsPayload(payload);
     let outText = cleanNarration(payload?.narration) || cleanReplyText(reply) || '🤡 (GPT forgot the punchline)';
